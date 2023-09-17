@@ -23,9 +23,8 @@ class InventoryScreenSimulator
 
     state.padding = 16
     inv_grid_columns = 10
-    inv_grid_item_scale = 1.5
-    state.r_panel_width = (1280 - state.padding * 2) * 0.4
-    state.r_panel_width = inv_grid_columns * 32 * inv_grid_item_scale
+    state.inv_grid_item_scale = 1.5
+    state.r_panel_width = inv_grid_columns * 32 * state.inv_grid_item_scale
     state.panel_label_h = 15
 
     state.inventory_grid = {
@@ -44,7 +43,7 @@ class InventoryScreenSimulator
 
     state.character_panel = {}
 
-    shikashi_sprite = {w: 32, h: 32, path: "shikashi/transparent_drop_shadow.png"}
+    shikashi_sprite = {w: 48, h: 48, tile_w: 32, tile_h: 32, path: "sprites/shikashi/transparent_drop_shadow.png"}
     state.items = [
       {
         name: "potion",
@@ -53,16 +52,16 @@ class InventoryScreenSimulator
         grid_loc: [1, 0],
         **shikashi_sprite,
         tile_x: 12 * 32,
-        tile_y: 12 * 32
+        tile_y: 9 * 32
       },
       {
         name: "short sword",
         desc: "A sword, but not very big.",
         consumable: false,
-        grid_loc: [0, 5],
+        grid_loc: [0, 4],
         **shikashi_sprite,
         tile_x: 2 * 32,
-        tile_y: 16 * 32
+        tile_y: 5 * 32
       }
     ]
 
@@ -93,7 +92,7 @@ class InventoryScreenSimulator
 
   def render
     render_debug_grid
-    render_inventory_grid
+    render_inventory_panel
     render_equip_panel
     render_stats_panel
     render_character
@@ -113,11 +112,12 @@ class InventoryScreenSimulator
     end
   end
 
-  def render_inventory_grid
+  def render_inventory_panel
     inv_grid = state.inventory_grid
     row_count, column_count = inv_grid.values_at(:cells_y, :cells_x)
     row_height = inv_grid[:h] / row_count
     column_width = inv_grid[:w] / column_count
+    left_side_x = inv_grid.values_at(:w, :padding).sum.from_right
 
     outputs.labels << {
       x: (state.r_panel_width + state.padding - state.r_panel_width / 2).from_right,
@@ -128,7 +128,7 @@ class InventoryScreenSimulator
 
     outputs.borders << 0.upto(row_count - 1).map do |i|
       {
-        x: inv_grid.values_at(:w, :padding).sum.from_right,
+        x: left_side_x,
         y: inv_grid[:padding] + row_height * i,
         w: inv_grid[:w],
         h: row_height
@@ -137,11 +137,20 @@ class InventoryScreenSimulator
 
     outputs.borders << 0.upto(column_count - 1).map do |i|
       {
-        x: inv_grid.values_at(:w, :padding).sum.from_right + column_width * i,
+        x: left_side_x + column_width * i,
         y: inv_grid[:y],
         w: column_width,
         h: inv_grid[:h]
       }
+    end
+
+    outputs.sprites << state.items.map do |item|
+      xd, yd = item[:grid_loc]
+      offset_scale = 32 * state.inv_grid_item_scale
+      item.merge(
+        x: left_side_x + xd * offset_scale,
+        y: inv_grid[:y] + yd * offset_scale
+      )
     end
   end
 
