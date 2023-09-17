@@ -21,13 +21,11 @@ class InventoryScreenSimulator
   def defaults
     state.welcomed = false
 
-    h, cells_y = 215, 4
-    state.r_panel_width = h * 2
     state.padding = 30
+    state.r_panel_width = (1280 - state.padding * 2) * 0.35
     state.panel_label_h = 15
 
-    state.stats_panel = {h: 350}
-
+    cells_y = 4
     state.inventory_grid = {
       padding: state.padding,
       cells_x: cells_y * 2,
@@ -35,7 +33,11 @@ class InventoryScreenSimulator
       x: 645,
       y: state.padding,
       w: state.r_panel_width,
-      h: h
+      h: state.r_panel_width / 2
+    }
+
+    state.stats_panel = {
+      h: 720 - (state.inventory_grid[:h] + state.padding * 3 + state.panel_label_h)
     }
 
     state.character_panel = {}
@@ -172,6 +174,6 @@ $game = InventoryScreenSimulator.new
 
 def tick(args)
   $game.args = args
-  $game.defaults && @defaults_done = true unless @defaults_done
+  $game.defaults and (@defaults_done = true) unless @defaults_done
   $game.tick
 end
