@@ -1,8 +1,8 @@
 # Remove the pound sign and leading space for the properties below before publishing your game.
 devid=tkling.lol
-devtitle=Will and Tyler
-gameid=spacebeing
-gametitle=Spacebeing in a Spiky World
+devtitle=tkling.lol
+gameid=inventory-screen-simulator
+gametitle=Inventory Screen Simulator
 # version=0.1
 # icon=metadata/icon.png
 
