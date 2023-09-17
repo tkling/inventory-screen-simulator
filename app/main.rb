@@ -21,16 +21,18 @@ class InventoryScreenSimulator
   def defaults
     state.welcomed_at = state.tick_count
 
-    state.padding = 20
+    state.padding = 16
+    inv_grid_columns = 10
+    inv_grid_item_scale = 1.5
     state.r_panel_width = (1280 - state.padding * 2) * 0.4
+    state.r_panel_width = inv_grid_columns * 32 * inv_grid_item_scale
     state.panel_label_h = 15
 
-    cells_y = 4
     state.inventory_grid = {
       padding: state.padding,
-      cells_x: cells_y * 2,
-      cells_y: cells_y,
-      x: 645,
+      cells_x: inv_grid_columns,
+      cells_y: inv_grid_columns / 2,
+      x: state.r_panel_width + state.padding,
       y: state.padding,
       w: state.r_panel_width,
       h: state.r_panel_width / 2
@@ -42,22 +44,25 @@ class InventoryScreenSimulator
 
     state.character_panel = {}
 
+    shikashi_sprite = {w: 32, h: 32, path: "shikashi/transparent_drop_shadow.png"}
     state.items = [
       {
         name: "potion",
         desc: "Heals you lol.",
         consumable: true,
-        grid_w: 1,
-        grid_h: 2,
-        grid_loc: [1, 0]
+        grid_loc: [1, 0],
+        **shikashi_sprite,
+        tile_x: 12 * 32,
+        tile_y: 12 * 32
       },
       {
         name: "short sword",
         desc: "A sword, but not very big.",
         consumable: false,
-        grid_w: 1,
-        grid_h: 3,
-        grid_loc: [0, 5]
+        grid_loc: [0, 5],
+        **shikashi_sprite,
+        tile_x: 2 * 32,
+        tile_y: 16 * 32
       }
     ]
 
@@ -98,12 +103,12 @@ class InventoryScreenSimulator
 
   def render_debug_grid
     v_line_template = {y: 0, y2: 720, g: 120, b: 80, a: 90}
-    outputs.lines << 20.step(1280, 20).map do |x|
+    outputs.lines << 16.step(1280, 16).map do |x|
       v_line_template.merge(x: x, x2: x)
     end
 
     h_line_template = {x: 0, x2: 1280, g: 120, b: 80, a: 90}
-    outputs.lines << 20.step(720, 20).map do |y|
+    outputs.lines << 16.step(720, 16).map do |y|
       h_line_template.merge(y: y, y2: y)
     end
   end
@@ -116,7 +121,7 @@ class InventoryScreenSimulator
 
     outputs.labels << {
       x: (state.r_panel_width + state.padding - state.r_panel_width / 2).from_right,
-      y: inv_grid[:h] + state.panel_label_h * 2 + state.padding,
+      y: inv_grid[:h] + state.panel_label_h * 2 + state.padding - 5,
       text: "~ inventory ~",
       alignment_enum: 1
     }
@@ -142,7 +147,7 @@ class InventoryScreenSimulator
 
   def render_equip_panel
     outputs.labels << {
-      x: (state.r_panel_width - state.r_panel_width / 4 + state.padding).from_right,
+      x: (state.r_panel_width - state.r_panel_width / 4 + state.padding + 5).from_right,
       y: (state.padding + state.panel_label_h).from_top,
       text: "~ equip ~",
       alignment_enum: 1
@@ -193,7 +198,7 @@ class InventoryScreenSimulator
   end
 
   def render_welcome
-    ticks_until_fully_faded = 90 # 90 ticks = 1.5 seconds
+    ticks_until_fully_faded = 100 # 90 ticks = 1.5 seconds
     ticks_since_welcomed = state.tick_count - state.welcomed_at
     return if ticks_since_welcomed > ticks_until_fully_faded
 
