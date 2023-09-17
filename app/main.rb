@@ -50,6 +50,7 @@ class InventoryScreenSimulator
         desc: "Heals you lol.",
         consumable: true,
         grid_loc: [1, 0],
+        grid: :inventory,
         **shikashi_sprite,
         tile_x: 12 * 32,
         tile_y: 9 * 32
@@ -59,9 +60,20 @@ class InventoryScreenSimulator
         desc: "A sword, but not very big.",
         consumable: false,
         grid_loc: [0, 4],
+        grid: :inventory,
         **shikashi_sprite,
         tile_x: 2 * 32,
         tile_y: 5 * 32
+      },
+      {
+        name: "strawberry",
+        desc: "A tasty treat that restores a bit of health.",
+        consumable: true,
+        grid_loc: [0, 0],
+        grid: :hotbar,
+        **shikashi_sprite,
+        tile_x: 4 * 32,
+        tile_y: 14 * 32
       }
     ]
 
@@ -97,6 +109,7 @@ class InventoryScreenSimulator
     render_stats_panel
     render_character
     render_character_panel
+    render_hotbar
     render_welcome
   end
 
@@ -144,7 +157,8 @@ class InventoryScreenSimulator
       }
     end
 
-    outputs.sprites << state.items.map do |item|
+    items = state.items.select { |item| item[:grid] == :inventory }
+    outputs.sprites << items.map do |item|
       xd, yd = item[:grid_loc]
       offset_scale = 32 * state.inv_grid_item_scale
       item.merge(
@@ -200,10 +214,40 @@ class InventoryScreenSimulator
 
     outputs.borders << {
       x: state.padding,
-      y: state.padding,
+      y: state.padding * 2 + 48,
       w: width,
-      h: 720 - state.padding * 2
+      h: 720 - state.padding * 3 - 48
     }
+  end
+
+  def render_hotbar
+    slots = 5
+    hotbar_x = 1280 - state.r_panel_width - state.padding * 2 - 48 * slots
+
+    outputs.labels << {
+      x: state.padding,
+      y: state.padding * 3,
+      text: "~ hotbar ~"
+    }
+
+    outputs.borders << 0.upto(slots - 1).map do |i|
+      {
+        x: hotbar_x + 48 * i,
+        y: state.padding,
+        w: 48,
+        h: 48
+      }
+    end
+
+    items = state.items.select { |i| i[:grid] == :hotbar }
+    outputs.sprites << items.map do |item|
+      xd, _yd = item[:grid_loc]
+      offset_scale = 32 * state.inv_grid_item_scale
+      item.merge(
+        x: hotbar_x + xd * offset_scale,
+        y: state.padding
+      )
+    end
   end
 
   def render_welcome
