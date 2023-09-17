@@ -19,10 +19,10 @@ class InventoryScreenSimulator
   end
 
   def defaults
-    state.welcomed = false
+    state.welcomed_at = state.tick_count
 
-    state.padding = 30
-    state.r_panel_width = (1280 - state.padding * 2) * 0.35
+    state.padding = 20
+    state.r_panel_width = (1280 - state.padding * 2) * 0.4
     state.panel_label_h = 15
 
     cells_y = 4
@@ -37,7 +37,7 @@ class InventoryScreenSimulator
     }
 
     state.stats_panel = {
-      h: 720 - (state.inventory_grid[:h] + state.padding * 3 + state.panel_label_h)
+      h: 720 - (state.inventory_grid[:h] + state.padding * 4)
     }
 
     state.character_panel = {}
@@ -87,10 +87,25 @@ class InventoryScreenSimulator
   end
 
   def render
+    render_debug_grid
     render_inventory_grid
+    render_equip_panel
     render_stats_panel
     render_character
     render_character_panel
+    render_welcome
+  end
+
+  def render_debug_grid
+    v_line_template = {y: 0, y2: 720, g: 120, b: 80, a: 90}
+    outputs.lines << 20.step(1280, 20).map do |x|
+      v_line_template.merge(x: x, x2: x)
+    end
+
+    h_line_template = {x: 0, x2: 1280, g: 120, b: 80, a: 90}
+    outputs.lines << 20.step(720, 20).map do |y|
+      h_line_template.merge(y: y, y2: y)
+    end
   end
 
   def render_inventory_grid
@@ -125,18 +140,34 @@ class InventoryScreenSimulator
     end
   end
 
-  def render_stats_panel
+  def render_equip_panel
     outputs.labels << {
-      x: (state.r_panel_width + state.padding - state.r_panel_width / 2).from_right,
+      x: (state.r_panel_width - state.r_panel_width / 4 + state.padding).from_right,
       y: (state.padding + state.panel_label_h).from_top,
-      text: "~ stats ~",
+      text: "~ equip ~",
       alignment_enum: 1
     }
 
     outputs.borders << {
       x: (state.r_panel_width + state.padding).from_right,
       y: (state.stats_panel[:h] + state.padding).from_top,
-      w: state.r_panel_width,
+      w: (state.r_panel_width / 2) - (state.padding / 2),
+      h: state.stats_panel[:h]
+    }
+  end
+
+  def render_stats_panel
+    outputs.labels << {
+      x: (state.r_panel_width / 4 + state.padding / 2).from_right,
+      y: (state.padding + state.panel_label_h).from_top,
+      text: "~ stats ~",
+      alignment_enum: 1
+    }
+
+    outputs.borders << {
+      x: (state.r_panel_width / 2 + state.padding / 2).from_right,
+      y: (state.stats_panel[:h] + state.padding).from_top,
+      w: (state.r_panel_width / 2) - (state.padding / 2),
       h: state.stats_panel[:h]
     }
   end
@@ -158,6 +189,33 @@ class InventoryScreenSimulator
       y: state.padding,
       w: width,
       h: 720 - state.padding * 2
+    }
+  end
+
+  def render_welcome
+    ticks_until_fully_faded = 90 # 90 ticks = 1.5 seconds
+    ticks_since_welcomed = state.tick_count - state.welcomed_at
+    return if ticks_since_welcomed > ticks_until_fully_faded
+
+    chroma_key = 255 * (ticks_until_fully_faded - ticks_since_welcomed) / ticks_until_fully_faded
+    bg_intensity = 150
+    outputs.solids << {
+      x: 1280.fdiv(2) - 353,
+      y: 720.fdiv(2) - 83,
+      w: 700,
+      h: 100,
+      r: bg_intensity, g: bg_intensity, b: bg_intensity,
+      a: chroma_key
+    }
+
+    outputs.labels << {
+      x: 1280.fdiv(2),
+      y: 720.fdiv(2),
+      text: "WELCOME TO INVENTORY",
+      alignment_enum: 1,
+      size_enum: 24,
+      r: 200, b: 200,
+      a: chroma_key
     }
   end
 
