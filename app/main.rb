@@ -5,7 +5,7 @@ class InventoryScreenSimulator
 
   # Goals:
   #   * arrange items in inventory grid
-  #   * set consumeables on hotbar
+  #   * set consumables on hotbar
   #   * supported inputs: mouse, kb, controller
   #   * save state
   #   * equip on character
@@ -207,7 +207,7 @@ class InventoryScreenSimulator
   end
 
   def render_welcome
-    ticks_until_fully_faded = 100 # 90 ticks = 1.5 seconds
+    ticks_until_fully_faded = 100
     ticks_since_welcomed = state.tick_count - state.welcomed_at
     return if ticks_since_welcomed > ticks_until_fully_faded
 
