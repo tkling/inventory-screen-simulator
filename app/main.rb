@@ -117,6 +117,7 @@ class InventoryScreenSimulator
     render_character_panel
     render_hotbar
     render_welcome
+    render_grid_cell_coords
   end
 
   def render_debug_grid
@@ -295,6 +296,19 @@ class InventoryScreenSimulator
       r: 200, b: 200,
       a: chroma_key
     }
+  end
+
+  def render_grid_cell_coords
+    outputs.labels << state.all_grid_cells.map do |cell|
+      {
+        x: cell.x + cell.w / 2,
+        y: cell.y + cell.h / 2,
+        text: cell.grid_loc,
+        size_enum: -3,
+        alignment_enum: 1,
+        r: 170
+      }
+    end
   end
 
   def handle_input
