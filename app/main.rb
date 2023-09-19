@@ -92,7 +92,8 @@ class InventoryScreenSimulator
         belt: nil
       },
       stats: {
-        hp: 10,
+        hp_current: 17,
+        hp_max: 28,
         str: 5,
         dex: 6,
         int: 7,
@@ -198,6 +199,15 @@ class InventoryScreenSimulator
       w: (state.r_panel_width / 2) - (state.padding / 2),
       h: state.stats_panel[:h]
     }
+
+    outputs.labels << state.character.stats.map.with_index do |(stat, value), i|
+      x = (state.r_panel_width / 2 - state.padding * 1.5).from_right
+      y = (state.padding * 2 + state.panel_label_h * 4 + i * state.panel_label_h * 2.2).from_top
+      [
+        {x: x, y: y, text: stat, size_enum: 4},
+        {x: x + 150, y: y, text: value, size_enum: 4}
+      ]
+    end.flatten
   end
 
   def render_character
