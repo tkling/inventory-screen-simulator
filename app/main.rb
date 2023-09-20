@@ -15,7 +15,6 @@ class InventoryScreenSimulator
   def tick
     render
     handle_input
-    calc
   end
 
   def defaults
@@ -45,8 +44,13 @@ class InventoryScreenSimulator
 
     state.character_panel = {}
 
-    shikashi_sprite = {w: 48, h: 48, tile_w: 32, tile_h: 32, path: "sprites/shikashi/transparent_drop_shadow.png"}
-    state.items = {
+    shikashi_sprite = {
+      w: 48, h: 48, tile_w: 32, tile_h: 32,
+      path: "sprites/shikashi/transparent_drop_shadow.png"
+    }
+
+    load_items
+    state.items ||= {
       0 => {
         id: 0,
         name: "potion",
@@ -117,6 +121,7 @@ class InventoryScreenSimulator
     render_character_panel
     render_hotbar
     render_welcome
+    render_saved_banner
     render_grid_cell_coords
   end
 
@@ -313,7 +318,9 @@ class InventoryScreenSimulator
 
   def handle_input
     gtk.request_quit if inputs.keyboard.key_down.escape
+
     defaults if inputs.keyboard.key_down.r || inputs.keyboard.key_down.enter
+    save if inputs.keyboard.key_down.s
 
     if state.currently_dragging_item_id
       item = state.items[state.currently_dragging_item_id]
@@ -345,7 +352,21 @@ class InventoryScreenSimulator
     end
   end
 
-  def calc
+  def save
+    state.saved_at = state.tick_count
+    gtk.serialize_state("items.txt", state.items)
+  end
+
+  def load_items
+    parsed = gtk.deserialize_state("items.txt")
+    state.items = parsed if parsed
+  end
+end
+
+class Hash
+  def __delete_thrash_count__!
+    # noop - patch so save can happen (5.6 issue)
+    # https://discord.com/channels/608064116111966245/895482347250655292/1148426288093220924
   end
 end
 
