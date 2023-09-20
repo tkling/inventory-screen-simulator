@@ -4,10 +4,10 @@ class InventoryScreenSimulator
   attr_gtk
 
   # Goals:
-  #   * arrange items in inventory grid
-  #   * set consumables on hotbar
+  #   * ✅ arrange items in inventory grid
+  #   * ✅ set consumables on hotbar
   #   * supported inputs: mouse, kb, controller
-  #   * save state
+  #   * ✅ save state
   #   * equip on character
   #   |=> change gear appearance
   #   |=> change stats
