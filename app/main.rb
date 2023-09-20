@@ -299,11 +299,17 @@ class InventoryScreenSimulator
   end
 
   def render_welcome
-    ticks_until_fully_faded = 100
-    ticks_since_welcomed = state.tick_count - state.welcomed_at
-    return if ticks_since_welcomed > ticks_until_fully_faded
+    fader "WELCOME TO INVENTORY", state.welcomed_at
+  end
 
-    chroma_key = 255 * (ticks_until_fully_faded - ticks_since_welcomed) / ticks_until_fully_faded
+  def fader(text, started_at)
+    return unless started_at
+
+    ticks_until_fully_faded = 100
+    ticks_since_started = state.tick_count - started_at
+    return if ticks_since_started > ticks_until_fully_faded
+
+    chroma_key = 255 * (ticks_until_fully_faded - ticks_since_started) / ticks_until_fully_faded
     bg_intensity = 150
     outputs.solids << {
       x: 1280.fdiv(2) - 353,
@@ -317,7 +323,7 @@ class InventoryScreenSimulator
     outputs.labels << {
       x: 1280.fdiv(2),
       y: 720.fdiv(2),
-      text: "WELCOME TO INVENTORY",
+      text: text,
       alignment_enum: 1,
       size_enum: 24,
       r: 200, b: 200,
@@ -336,6 +342,10 @@ class InventoryScreenSimulator
         r: 170
       }
     end
+  end
+
+  def render_saved_banner
+    fader "SAVED!", state.saved_at
   end
 
   def handle_input
