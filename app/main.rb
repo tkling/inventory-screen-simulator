@@ -387,11 +387,11 @@ class InventoryScreenSimulator
 
   def save
     state.saved_at = state.tick_count
-    gtk.serialize_state("items.txt", state.items)
+    gtk.serialize_state("saves/items.txt", state.items)
   end
 
   def load_items
-    parsed = gtk.deserialize_state("items.txt")
+    parsed = gtk.deserialize_state("saves/items.txt")
     state.items = parsed if parsed
   end
 end
