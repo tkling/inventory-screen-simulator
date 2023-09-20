@@ -177,14 +177,13 @@ class InventoryScreenSimulator
   end
 
   def render_debug_grid
-    v_line_template = {y: 0, y2: 720, g: 120, b: 80, a: 90}
+    style = {g: 120, b: 80, a: 90}
     outputs.lines << 16.step(1280, 16).map do |x|
-      v_line_template.merge(x: x, x2: x)
+      {x: x, x2: x, y: 0, y2: 720, **style}
     end
 
-    h_line_template = {x: 0, x2: 1280, g: 120, b: 80, a: 90}
     outputs.lines << 16.step(720, 16).map do |y|
-      h_line_template.merge(y: y, y2: y)
+      {x: 0, x2: 1280, y: y, y2: y, **style}
     end
   end
 
@@ -397,6 +396,11 @@ $game = InventoryScreenSimulator.new
 
 def tick(args)
   $game.args = args
-  $game.defaults and (@defaults_done = true) unless @defaults_done
+
+  unless @defaults_done
+    $game.defaults
+    @defaults_done = true
+  end
+
   $game.tick
 end
