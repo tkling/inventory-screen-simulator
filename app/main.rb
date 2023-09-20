@@ -38,6 +38,12 @@ class InventoryScreenSimulator
       h: state.r_panel_width / 2
     }
 
+    hotbar_slots = 5
+    state.hotbar = {
+      slots: hotbar_slots,
+      x: 1280 - state.r_panel_width - state.padding * 2 - 48 * hotbar_slots
+    }
+
     state.stats_panel = {
       h: 720 - (state.inventory_grid[:h] + state.padding * 4)
     }
@@ -110,6 +116,51 @@ class InventoryScreenSimulator
         con: 9
       }
     }
+
+    statics
+  end
+
+  def inventory_panel_left_side_x
+    state.inventory_grid.values_at(:w, :padding).sum.from_right
+  end
+
+  def statics
+    inv_grid = state.inventory_grid
+    inv_row_count, inv_column_count = inv_grid.values_at(:cells_y, :cells_x)
+    row_height = inv_grid[:h] / inv_row_count
+
+    inventory_cells = 0.upto(inv_row_count - 1).map do |ri|
+      y = state.padding + row_height * ri
+      0.upto(inv_column_count - 1).map do |ci|
+        {
+          x: inventory_panel_left_side_x + row_height * ci,
+          y: y,
+          w: row_height,
+          h: row_height,
+          grid_loc: [ci, ri],
+          grid: :inventory,
+          primitive_marker: :border
+        }
+      end
+    end.flatten
+
+    hotbar_cells = 0.upto(state.hotbar.slots - 1).map do |i|
+      {
+        x: state.hotbar.x + 48 * i,
+        y: state.padding,
+        w: 48,
+        h: 48,
+        grid_loc: [i, 0],
+        grid: :hotbar,
+        primitive_marker: :border
+      }
+    end
+
+    equip_cells = []
+
+    all_cells = [*inventory_cells, *hotbar_cells, *equip_cells]
+    state.all_grid_cells += all_cells
+    outputs.static_borders << all_cells
   end
 
   def render
@@ -139,9 +190,6 @@ class InventoryScreenSimulator
 
   def render_inventory_panel
     inv_grid = state.inventory_grid
-    row_count, column_count = inv_grid.values_at(:cells_y, :cells_x)
-    row_height = inv_grid[:h] / row_count
-    left_side_x = inv_grid.values_at(:w, :padding).sum.from_right
 
     outputs.labels << {
       x: (state.r_panel_width + state.padding - state.r_panel_width / 2).from_right,
@@ -150,31 +198,17 @@ class InventoryScreenSimulator
       alignment_enum: 1
     }
 
-    outputs.borders << 0.upto(row_count - 1).map do |ri|
-      y = inv_grid[:padding] + row_height * ri
-      0.upto(column_count - 1).map do |ci|
-        {
-          x: left_side_x + 48 * ci,
-          y: y,
-          w: row_height,
-          h: row_height,
-          grid_loc: [ci, ri],
-          grid: :inventory
-        }
-      end
-    end.flatten.tap { |cells| state.all_grid_cells += cells }
-
     items = state.items.values.select { |item| item[:grid] == :inventory }
     outputs.sprites << items.map do |item|
-      xd, yd = item[:grid_loc]
-      offset_scale = 32 * state.inv_grid_item_scale
-      item.tap do |i|
-        unless i.id == state.currently_dragging_item_id
-          i.merge!(
-            x: left_side_x + xd * offset_scale,
-            y: inv_grid[:y] + yd * offset_scale
-          )
-        end
+      if item.id == state.currently_dragging_item_id
+        item
+      else
+        xi, yi = item[:grid_loc]
+        offset_scale = 32 * state.inv_grid_item_scale
+        item.merge!(
+          x: inventory_panel_left_side_x + xi * offset_scale,
+          y: inv_grid[:y] + yi * offset_scale
+        )
       end
     end
   end
@@ -249,17 +283,6 @@ class InventoryScreenSimulator
       y: state.padding * 3,
       text: "~ hotbar ~"
     }
-
-    outputs.borders << 0.upto(slots - 1).map do |i|
-      {
-        x: hotbar_x + 48 * i,
-        y: state.padding,
-        w: 48,
-        h: 48,
-        grid_loc: [i, 0],
-        grid: :hotbar
-      }
-    end.tap { |cells| state.all_grid_cells += cells }
 
     items = state.items.values.select { |i| i[:grid] == :hotbar }
     outputs.sprites << items.map do |item|
