@@ -12,6 +12,7 @@ class InventoryScreenSimulator
   #   |=> change gear appearance
   #   |=> change stats
   #   |=> set bonuses?
+  #   |=> make it look cool
   def tick
     render
     handle_input
