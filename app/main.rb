@@ -8,9 +8,9 @@ class InventoryScreenSimulator
   #   * ✅ set consumables on hotbar
   #   * supported inputs: mouse, kb, controller
   #   * ✅ save state
-  #   * equip on character
+  #   * ✅ equip on character
   #   |=> change gear appearance
-  #   |=> change stats
+  #   |=> ✅ change stats
   #   |=> set bonuses?
   #   |=> make it look cool
   def tick
