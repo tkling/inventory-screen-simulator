@@ -256,6 +256,7 @@ class InventoryScreenSimulator
     render_hotbar
     render_welcome
     render_saved_banner
+    render_deleted_banner
     render_grid_cell_coords
   end
 
@@ -454,11 +455,16 @@ class InventoryScreenSimulator
     fader "SAVED!", state.saved_at
   end
 
+  def render_deleted_banner
+    fader "SAVE DELETED!", state.save_deleted_at
+  end
+
   def handle_input
     gtk.request_quit if inputs.keyboard.key_down.escape
 
     defaults if inputs.keyboard.key_down.r || inputs.keyboard.key_down.enter
     save if inputs.keyboard.key_down.s
+    delete_save if inputs.keyboard.key_down.d
 
     if state.currently_dragging_item_id
       item = state.items[state.currently_dragging_item_id]
@@ -493,6 +499,11 @@ class InventoryScreenSimulator
   def save
     state.saved_at = state.tick_count
     gtk.serialize_state("saves/items.txt", state.items)
+  end
+
+  def delete_save
+    state.save_deleted_at = state.tick_count
+    gtk.delete_file_if_exist("saves/items.txt")
   end
 
   def load_items
