@@ -51,6 +51,13 @@ class InventoryScreenSimulator
 
     state.character_panel = {}
 
+    state.equip_panel = {
+      x: (state.r_panel_width + state.padding).from_right,
+      y: (state.stats_panel[:h] + state.padding).from_top,
+      w: (state.r_panel_width / 2) - (state.padding / 2),
+      h: state.stats_panel[:h]
+    }
+
     shikashi_sprite = {
       w: 48, h: 48, tile_w: 32, tile_h: 32,
       path: "sprites/shikashi/transparent_drop_shadow.png"
@@ -104,8 +111,7 @@ class InventoryScreenSimulator
         feet: nil,
         ring_1: nil,
         ring_2: nil,
-        necklace: nil,
-        belt: nil
+        necklace: nil
       },
       stats: {
         hp_current: 17,
@@ -126,6 +132,7 @@ class InventoryScreenSimulator
   end
 
   def statics
+    outputs.static_borders.clear
     inv_grid = state.inventory_grid
     inv_row_count, inv_column_count = inv_grid.values_at(:cells_y, :cells_x)
     row_height = inv_grid[:h] / inv_row_count
@@ -157,9 +164,72 @@ class InventoryScreenSimulator
       }
     end
 
-    equip_cells = []
+    equip_panel = state.equip_panel
+    equip_panel_sprite_center = equip_panel.x + equip_panel.w.fdiv(2) - 48.fdiv(2)
+    sprite_size = 48
+    head_y = equip_panel.y + equip_panel.h - state.padding - sprite_size * 2
+    equip_cell_template = {w: sprite_size, h: sprite_size, grid: :equip}
+    equip_cells = [
+      {
+        grid_loc: :head, gear_type: :head,
+        x: equip_panel_sprite_center,
+        y: head_y,
+        **equip_cell_template
+      },
+      {
+        grid_loc: :main_hand, gear_type: :weapon,
+        x: equip_panel.x + equip_panel.w / 4 - sprite_size.fdiv(2),
+        y: head_y - sprite_size - state.padding,
+        **equip_cell_template
+      },
+      {
+        grid_loc: :off_hand, gear_type: :weapon,
+        x: equip_panel.x + equip_panel.w / 4 * 3 - sprite_size.fdiv(2),
+        y: head_y - sprite_size - state.padding,
+        **equip_cell_template
+      },
+      {
+        grid_loc: :chest, gear_type: :chest,
+        x: equip_panel_sprite_center,
+        y: head_y - sprite_size - state.padding,
+        **equip_cell_template
+      },
+      {
+        grid_loc: :legs, gear_type: :legs,
+        x: equip_panel_sprite_center,
+        y: head_y - sprite_size * 2 - state.padding * 2,
+        **equip_cell_template
+      },
+      {
+        grid_loc: :feet, gear_type: :feet,
+        x: equip_panel.x + equip_panel.w / 2 - sprite_size / 2,
+        y: head_y - sprite_size * 3 - state.padding * 3,
+        **equip_cell_template
+      },
+      {
+        grid_loc: :necklace, gear_type: :necklace,
+        x: equip_panel_sprite_center,
+        y: equip_panel.y + state.padding,
+        **equip_cell_template
+      },
+      {
+        grid_loc: :ring_1, gear_type: :ring,
+        x: equip_panel_sprite_center - equip_panel.w.fdiv(3),
+        y: equip_panel.y + state.padding,
+        **equip_cell_template
+      },
+      {
+        grid_loc: :ring_2, gear_type: :ring,
+        x: equip_panel_sprite_center + equip_panel.w.fdiv(3),
+        y: equip_panel.y + state.padding,
+        **equip_cell_template
+      }
+    ]
+
+    outputs.static_borders << state.equip_panel
 
     all_cells = [*inventory_cells, *hotbar_cells, *equip_cells]
+    state.equip_cells = equip_cells
     state.all_grid_cells += all_cells
     outputs.static_borders << all_cells
   end
@@ -221,12 +291,19 @@ class InventoryScreenSimulator
       alignment_enum: 1
     }
 
-    outputs.borders << {
-      x: (state.r_panel_width + state.padding).from_right,
-      y: (state.stats_panel[:h] + state.padding).from_top,
-      w: (state.r_panel_width / 2) - (state.padding / 2),
-      h: state.stats_panel[:h]
-    }
+    items = state.items.values.select { |item| item[:grid] == :equip }
+    outputs.sprites << items.map do |item|
+      if item.id == state.currently_dragging_item_id
+        item
+      else
+        slot = item[:grid_loc]
+        equip_grid_cell = state.equip_cells.find { |cell| cell[:grid_loc] == slot }
+        item.merge!(
+          x: equip_grid_cell.x,
+          y: equip_grid_cell.y
+        )
+      end
+    end
   end
 
   def render_stats_panel
