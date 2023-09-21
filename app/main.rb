@@ -16,6 +16,7 @@ class InventoryScreenSimulator
   def tick
     render
     handle_input
+    calc
   end
 
   def defaults
@@ -63,8 +64,7 @@ class InventoryScreenSimulator
       path: "sprites/shikashi/transparent_drop_shadow.png"
     }
 
-    load_items
-    state.items ||= {
+    load_items or (state.items = {
       0 => {
         id: 0,
         name: "potion",
@@ -74,18 +74,21 @@ class InventoryScreenSimulator
         grid: :inventory,
         **shikashi_sprite,
         tile_x: 12 * 32,
-        tile_y: 9 * 32
+        tile_y: 9 * 32,
+        effect: {hp_current: 9}
       },
       1 => {
         id: 1,
         name: "short sword",
         desc: "A sword, but not very big.",
+        gear_type: :weapon,
         consumable: false,
         grid_loc: [0, 4],
         grid: :inventory,
         **shikashi_sprite,
         tile_x: 2 * 32,
-        tile_y: 5 * 32
+        tile_y: 5 * 32,
+        effect: {str: 2}
       },
       2 => {
         id: 2,
@@ -96,9 +99,10 @@ class InventoryScreenSimulator
         grid: :hotbar,
         **shikashi_sprite,
         tile_x: 4 * 32,
-        tile_y: 14 * 32
+        tile_y: 14 * 32,
+        effect: {hp_current: 4}
       }
-    }
+    })
 
     state.character = {
       name: "Charmander Smith",
@@ -121,6 +125,14 @@ class InventoryScreenSimulator
         int: 7,
         wis: 8,
         con: 9
+      },
+      gear_stats: {
+        hp_max: 0,
+        str: 0,
+        dex: 0,
+        int: 0,
+        wis: 0,
+        con: 0
       }
     }
 
@@ -321,13 +333,29 @@ class InventoryScreenSimulator
       h: state.stats_panel[:h]
     }
 
-    outputs.labels << state.character.stats.map.with_index do |(stat, value), i|
+    base_stats = state.character.stats
+    gear_stats = state.character.gear_stats
+
+    compiled_stats = base_stats.map do |(stat, base_value)|
+      gear_mod = gear_stats[stat] || 0
+      compiled_value = base_value + gear_mod
+      [stat, compiled_value, gear_mod]
+    end
+
+    outputs.labels << compiled_stats.map.with_index do |(stat, value, mod), i|
       x = (state.r_panel_width / 2 - state.padding * 1.5).from_right
       y = (state.padding * 2 + state.panel_label_h * 4 + i * state.panel_label_h * 2.2).from_top
+      t = {y: y, size_enum: 1}
       [
-        {x: x, y: y, text: stat, size_enum: 4},
-        {x: x + 150, y: y, text: value, size_enum: 4}
-      ]
+        t.merge(x: x, text: stat),
+        t.merge(x: x + 120, text: value)
+      ].tap do |stat_labels|
+        if mod && mod != 0
+          text = mod.negative? ? mod : "+#{mod}"
+          color = mod.negative? ? :r : :g
+          stat_labels << t.merge(:x => x + 150, :text => text, color => 150)
+        end
+      end
     end.flatten
   end
 
@@ -470,6 +498,15 @@ class InventoryScreenSimulator
   def load_items
     parsed = gtk.deserialize_state("saves/items.txt")
     state.items = parsed if parsed
+    !!parsed
+  end
+
+  def calc
+    # TODO: this could get cleaned up a fair bit
+    state.character.gear_stats = {}
+    state.items&.values&.select { |i| i.grid == :equip }&.each do |i|
+      state.character.gear_stats[i.effect.keys.first] = i.effect.values.first
+    end
   end
 end
 
