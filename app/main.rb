@@ -355,16 +355,18 @@ class InventoryScreenSimulator
       x = (state.r_panel_width / 2 - state.padding * 1.5).from_right
       y = (state.padding * 2 + state.panel_label_h * 4 + i * state.panel_label_h * 2.2).from_top
       t = {y: y, size_enum: 1}
+
+      mod_label = if mod && mod != 0
+        text = mod.negative? ? mod : "+#{mod}"
+        color = mod.negative? ? :r : :g
+        t.merge(:x => x + 150, :text => text, color => 150)
+      end
+
       [
         t.merge(x: x, text: stat),
-        t.merge(x: x + 120, text: value)
-      ].tap do |stat_labels|
-        if mod && mod != 0
-          text = mod.negative? ? mod : "+#{mod}"
-          color = mod.negative? ? :r : :g
-          stat_labels << t.merge(:x => x + 150, :text => text, color => 150)
-        end
-      end
+        t.merge(x: x + 120, text: value),
+        mod_label
+      ].compact
     end.flatten
   end
 
