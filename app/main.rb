@@ -7,6 +7,7 @@ class InventoryScreenSimulator
   #   * ✅ arrange items in inventory grid
   #   * ✅ set consumables on hotbar
   #   * supported inputs: mouse, kb, controller
+  #   * render character
   #   * ✅ save state
   #   * ✅ equip on character
   #   |=> change gear appearance
@@ -22,6 +23,7 @@ class InventoryScreenSimulator
   def defaults
     state.welcomed_at = state.tick_count
     state.currently_dragging_item_id = nil
+    state.show_debug_info = true
 
     state.padding = 16
     inv_grid_columns = 10
@@ -260,7 +262,13 @@ class InventoryScreenSimulator
     render_grid_cell_coords
   end
 
+  def toggle_debug_grid
+    state.show_debug_info = !state.show_debug_info
+  end
+
   def render_debug_grid
+    return unless state.show_debug_info
+
     style = {g: 120, b: 80, a: 90}
     outputs.lines << 16.step(1280, 16).map do |x|
       {x: x, x2: x, y: 0, y2: 720, **style}
@@ -439,6 +447,8 @@ class InventoryScreenSimulator
   end
 
   def render_grid_cell_coords
+    return unless state.show_debug_info
+
     outputs.labels << state.all_grid_cells.map do |cell|
       {
         x: cell.x + cell.w / 2,
@@ -465,6 +475,7 @@ class InventoryScreenSimulator
     defaults if inputs.keyboard.key_down.r || inputs.keyboard.key_down.enter
     save if inputs.keyboard.key_down.s
     delete_save if inputs.keyboard.key_down.d
+    toggle_debug_grid if inputs.keyboard.key_down.p
 
     if state.currently_dragging_item_id
       item = state.items[state.currently_dragging_item_id]
