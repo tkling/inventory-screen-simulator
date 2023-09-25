@@ -10,6 +10,7 @@ class InventoryScreenSimulator
   #   * ✅ render character
   #   * ✅ save state
   #   * ✅ equip on character
+  #   * prevent "wrong" equips (like sword on foot)
   #   |=> change gear appearance
   #   |=> ✅ change stats
   #   |=> set bonuses?
@@ -390,12 +391,14 @@ class InventoryScreenSimulator
   def render_character
     idle_frame = @idle_anim[state.idle_at.frame_index(6, 9, true).or(0)]
     scale = 12.0
-    outputs.sprites << {
+    dims = {
       x: state.padding + 50,
       y: state.padding * 5 + 48 * 2,
       w: 69 * scale,
       h: 44 * scale
-    }.merge(idle_frame)
+    }
+    outputs.borders << dims.merge(r: 200, b: 200) if state.show_debug_info
+    outputs.sprites << dims.merge(idle_frame)
   end
 
   def render_character_panel
