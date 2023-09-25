@@ -285,12 +285,13 @@ class InventoryScreenSimulator
   def render_debug_grid
     return unless state.show_debug_info
 
+    size = 16
     style = {g: 120, b: 80, a: 90}
-    outputs.lines << 16.step(1280, 16).map do |x|
+    outputs.lines << size.step(1280, size).map do |x|
       {x: x, x2: x, y: 0, y2: 720, **style}
     end
 
-    outputs.lines << 16.step(720, 16).map do |y|
+    outputs.lines << size.step(720, size).map do |y|
       {x: 0, x2: 1280, y: y, y2: y, **style}
     end
   end
@@ -479,7 +480,7 @@ class InventoryScreenSimulator
         x: cell.x + cell.w / 2,
         y: cell.y + cell.h / 2,
         text: cell.grid_loc,
-        size_enum: -3,
+        size_enum: -4,
         alignment_enum: 1,
         r: 170
       }
