@@ -7,13 +7,26 @@ class InventoryScreenSimulator
   #   * ✅ arrange items in inventory grid
   #   * ✅ set consumables on hotbar
   #   * supported inputs: mouse, kb, controller
-  #   * render character
+  #   * ✅ render character
   #   * ✅ save state
   #   * ✅ equip on character
   #   |=> change gear appearance
   #   |=> ✅ change stats
   #   |=> set bonuses?
   #   |=> make it look cool
+  def initialize
+    warrior_w, warrior_h = 69, 44
+    @idle_anim = 0.upto(5).map do |i|
+      {
+        path: "sprites/warrior/SpriteSheet/Warrior_Sheet-Effect.png",
+        tile_x: 0 + warrior_w * i,
+        tile_y: 0,
+        tile_w: warrior_w,
+        tile_h: warrior_h
+      }
+    end
+  end
+
   def tick
     render
     handle_input
@@ -22,6 +35,7 @@ class InventoryScreenSimulator
 
   def defaults
     state.welcomed_at = state.tick_count
+    state.idle_at = state.tick_count
     state.currently_dragging_item_id = nil
     state.show_debug_info = true
 
@@ -52,7 +66,9 @@ class InventoryScreenSimulator
       h: 720 - (state.inventory_grid[:h] + state.padding * 4)
     }
 
-    state.character_panel = {}
+    state.character_panel = {
+      w: 1280 - state.r_panel_width - state.padding * 3
+    }
 
     state.equip_panel = {
       x: (state.r_panel_width + state.padding).from_right,
@@ -371,12 +387,19 @@ class InventoryScreenSimulator
   end
 
   def render_character
+    idle_frame = @idle_anim[state.idle_at.frame_index(6, 9, true).or(0)]
+    scale = 12.0
+    outputs.sprites << {
+      x: state.padding + 50,
+      y: state.padding * 5 + 48 * 2,
+      w: 69 * scale,
+      h: 44 * scale
+    }.merge(idle_frame)
   end
 
   def render_character_panel
-    width = 1280 - state.r_panel_width - state.padding * 3
     outputs.labels << {
-      x: (state.padding + width) / 2,
+      x: (state.padding + state.character_panel.w) / 2,
       y: (state.padding + state.panel_label_h).from_top,
       text: "~ #{state.character[:name]} ~",
       alignment_enum: 1
@@ -385,7 +408,7 @@ class InventoryScreenSimulator
     outputs.borders << {
       x: state.padding,
       y: state.padding * 2 + 48,
-      w: width,
+      w: state.character_panel.w,
       h: 720 - state.padding * 3 - 48
     }
   end
