@@ -39,6 +39,8 @@ class InventoryScreenSimulator
     state.idle_at = state.tick_count
     state.currently_dragging_item_id = nil
     state.show_debug_info = true
+    state.show_controls = false
+    state.input_mode = :mkb
 
     state.padding = 16
     inv_grid_columns = 10
@@ -267,6 +269,7 @@ class InventoryScreenSimulator
 
   def render
     render_debug_grid
+    render_controls
     render_inventory_panel
     render_equip_panel
     render_stats_panel
@@ -283,6 +286,11 @@ class InventoryScreenSimulator
     state.show_debug_info = !state.show_debug_info
   end
 
+  def toggle_show_controls
+    puts "state.show_controls: #{state.show_controls}"
+    state.show_controls = !state.show_controls
+  end
+
   def render_debug_grid
     return unless state.show_debug_info
 
@@ -294,6 +302,31 @@ class InventoryScreenSimulator
 
     outputs.lines << size.step(720, size).map do |y|
       {x: 0, x2: 1280, y: y, y2: y, **style}
+    end
+  end
+
+  def render_controls
+    return unless state.show_controls
+    return unless state.input_mode == :mkb
+
+    # TODO: this should be set as a const/state var
+    control_map = {
+      d: "delete save",
+      r: "reset",
+      b: "show/hide background",
+      g: "show/hide grid",
+      c: "show/hide controls",
+      esc: "quit"
+    }
+
+    outputs.labels << control_map.map.with_index do |(key, action), i|
+      {
+        x: 530,
+        y: 450 - 40 * i,
+        text: "#{key}: #{action}",
+        alignment_enum: 0,
+        size_enum: 5
+      }
     end
   end
 
@@ -505,6 +538,7 @@ class InventoryScreenSimulator
     save if inputs.keyboard.key_down.s
     delete_save if inputs.keyboard.key_down.d
     toggle_debug_grid if inputs.keyboard.key_down.p
+    toggle_show_controls if inputs.keyboard.key_down.c
 
     if state.currently_dragging_item_id
       item = state.items[state.currently_dragging_item_id]
