@@ -269,7 +269,6 @@ class InventoryScreenSimulator
 
   def render
     render_debug_grid
-    render_controls
     render_inventory_panel
     render_equip_panel
     render_stats_panel
@@ -280,6 +279,7 @@ class InventoryScreenSimulator
     render_saved_banner
     render_deleted_banner
     render_grid_cell_coords
+    render_controls
   end
 
   def toggle_debug_grid
@@ -311,23 +311,53 @@ class InventoryScreenSimulator
 
     # TODO: this should be set as a const/state var
     control_map = {
-      d: "delete save",
-      r: "reset",
-      b: "show/hide background",
-      g: "show/hide grid",
-      c: "show/hide controls",
-      esc: "quit"
+      [:s, :A] => "save",
+      [:d, :Y] => "delete save",
+      [:r, :B] => "reset",
+      [:b, :R1] => "show/hide background",
+      [:g, :L1] => "show/hide grid",
+      [:c, :L2] => "show/hide controls",
+      [:esc, :SEL] => "quit"
     }
 
-    outputs.labels << control_map.map.with_index do |(key, action), i|
-      {
-        x: 530,
-        y: 450 - 40 * i,
-        text: "#{key}: #{action}",
-        alignment_enum: 0,
-        size_enum: 5
-      }
+    controls_window_x_center = 640
+    controls_window_width = 600
+    controls_window_height = 500
+    outputs.labels << control_map.map.with_index do |(keys, action), i|
+      y = 500 - 50 * i
+      mkb, controller = keys
+      [
+        {
+          x: controls_window_x_center - 70,
+          y: y,
+          text: mkb,
+          alignment_enum: 2,
+          size_enum: 6
+        },
+        {
+          x: controls_window_x_center,
+          y: y,
+          text: controller,
+          alignment_enum: 2,
+          size_enum: 6
+        },
+        {
+          x: controls_window_x_center + state.padding * 2,
+          y: y,
+          text: action,
+          alignment_enum: 0,
+          size_enum: 6
+        }
+      ]
     end
+
+    outputs.sprites << {
+      x: controls_window_x_center - 200,
+      y: 360 - controls_window_height / 2 - 20,
+      w: controls_window_width,
+      h: controls_window_height,
+      path: "sprites/gosu/hud/window.png"
+    }
   end
 
   def render_inventory_panel
@@ -534,10 +564,10 @@ class InventoryScreenSimulator
   def handle_input
     gtk.request_quit if inputs.keyboard.key_down.escape
 
-    defaults if inputs.keyboard.key_down.r || inputs.keyboard.key_down.enter
+    defaults if inputs.keyboard.key_down.r
     save if inputs.keyboard.key_down.s
     delete_save if inputs.keyboard.key_down.d
-    toggle_debug_grid if inputs.keyboard.key_down.p
+    toggle_debug_grid if inputs.keyboard.key_down.g
     toggle_show_controls if inputs.keyboard.key_down.c
 
     if state.currently_dragging_item_id
