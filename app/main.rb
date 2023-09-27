@@ -287,7 +287,6 @@ class InventoryScreenSimulator
   end
 
   def toggle_show_controls
-    puts "state.show_controls: #{state.show_controls}"
     state.show_controls = !state.show_controls
   end
 
