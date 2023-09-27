@@ -35,6 +35,7 @@ class InventoryScreenSimulator
   end
 
   def defaults
+    gtk.hide_cursor
     state.welcomed_at = state.tick_count
     state.idle_at = state.tick_count
     state.currently_dragging_item_id = nil
@@ -298,6 +299,7 @@ class InventoryScreenSimulator
     render_deleted_banner
     render_grid_cell_coords
     render_controls
+    render_cursor
   end
 
   def toggle_debug
@@ -311,6 +313,17 @@ class InventoryScreenSimulator
 
   def toggle_show_controls
     state.show_controls = !state.show_controls
+  end
+
+  def render_cursor
+    cursor_variant = state.currently_dragging_item_id ? :c : :a
+
+    outputs.sprites << {
+      x: inputs.mouse.x,
+      y: inputs.mouse.y - 48,
+      w: 48, h: 48,
+      path: "sprites/complete_gui_essential_v2.2/Icon_Cursor_08#{cursor_variant}.png"
+    }
   end
 
   def render_debug_info
