@@ -259,17 +259,34 @@ class InventoryScreenSimulator
       }
     ]
 
-    outputs.static_borders << state.equip_panel
-
     all_cells = [*inventory_cells, *hotbar_cells, *equip_cells]
     state.equip_cells = equip_cells
     state.all_grid_cells += all_cells
-    outputs.static_borders << all_cells
+
+    if state.show_grid
+      outputs.static_borders << state.equip_panel
+      outputs.static_borders << all_cells if state.show_grid
+
+      # stats panel border
+      outputs.static_borders << {
+        x: (state.r_panel_width / 2 + state.padding / 2).from_right,
+        y: (state.stats_panel[:h] + state.padding).from_top,
+        w: (state.r_panel_width / 2) - (state.padding / 2),
+        h: state.stats_panel[:h]
+      }
+
+      # character panel border
+      outputs.static_borders << {
+        x: state.padding,
+        y: state.padding * 2 + 48,
+        w: state.character_panel.w,
+        h: 720 - state.padding * 3 - 48
+      }
+    end
   end
 
   def render
     render_debug_info
-    render_grid
     render_inventory_panel
     render_equip_panel
     render_stats_panel
@@ -289,6 +306,7 @@ class InventoryScreenSimulator
 
   def toggle_grid
     state.show_grid = !state.show_grid
+    statics
   end
 
   def toggle_show_controls
@@ -317,9 +335,6 @@ class InventoryScreenSimulator
     end
   end
 
-  def render_grid
-  end
-
   def render_controls
     return unless state.show_controls
     return unless state.input_mode == :mkb
@@ -336,7 +351,7 @@ class InventoryScreenSimulator
       [:esc, :SEL] => "quit"
     }
 
-    controls_window_x_center = 580
+    controls_window_x_center = 540
     controls_window_width = 600
     controls_window_height = 550
     outputs.labels << control_map.map.with_index do |(keys, action), i|
@@ -432,13 +447,6 @@ class InventoryScreenSimulator
       alignment_enum: 1
     }
 
-    outputs.borders << {
-      x: (state.r_panel_width / 2 + state.padding / 2).from_right,
-      y: (state.stats_panel[:h] + state.padding).from_top,
-      w: (state.r_panel_width / 2) - (state.padding / 2),
-      h: state.stats_panel[:h]
-    }
-
     base_stats = state.character.stats
     gear_stats = state.character.gear_stats
 
@@ -486,13 +494,6 @@ class InventoryScreenSimulator
       y: (state.padding + state.panel_label_h).from_top,
       text: "~ #{state.character[:name]} ~",
       alignment_enum: 1
-    }
-
-    outputs.borders << {
-      x: state.padding,
-      y: state.padding * 2 + 48,
-      w: state.character_panel.w,
-      h: 720 - state.padding * 3 - 48
     }
   end
 
