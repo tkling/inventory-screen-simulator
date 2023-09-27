@@ -268,7 +268,8 @@ class InventoryScreenSimulator
   end
 
   def render
-    render_debug_grid
+    render_debug_info
+    render_grid
     render_inventory_panel
     render_equip_panel
     render_stats_panel
@@ -282,26 +283,41 @@ class InventoryScreenSimulator
     render_controls
   end
 
-  def toggle_debug_grid
+  def toggle_debug
     state.show_debug_info = !state.show_debug_info
+  end
+
+  def toggle_grid
+    state.show_grid = !state.show_grid
   end
 
   def toggle_show_controls
     state.show_controls = !state.show_controls
   end
 
-  def render_debug_grid
+  def render_debug_info
     return unless state.show_debug_info
 
     size = 16
-    style = {g: 120, b: 80, a: 90}
+    default_style = {g: 120, b: 80, a: 90}
+    x4_style = {r: 200, g: 20, b: 20}
+    x8_style = {b: 230}
     outputs.lines << size.step(1280, size).map do |x|
+      style = default_style
+      style = x4_style if x % (size * 4) == 0
+      style = x8_style if x % (size * 8) == 0
       {x: x, x2: x, y: 0, y2: 720, **style}
     end
 
     outputs.lines << size.step(720, size).map do |y|
+      style = default_style
+      style = x4_style if y % (size * 4) == 0
+      style = x8_style if y % (size * 8) == 0
       {x: 0, x2: 1280, y: y, y2: y, **style}
     end
+  end
+
+  def render_grid
   end
 
   def render_controls
@@ -314,16 +330,17 @@ class InventoryScreenSimulator
       [:d, :Y] => "delete save",
       [:r, :B] => "reset",
       [:b, :R1] => "show/hide background",
-      [:g, :L1] => "show/hide grid",
+      [:g, :R2] => "show/hide grid",
+      [:f, :L1] => "show/hide debug",
       [:c, :L2] => "show/hide controls",
       [:esc, :SEL] => "quit"
     }
 
-    controls_window_x_center = 640
+    controls_window_x_center = 580
     controls_window_width = 600
-    controls_window_height = 500
+    controls_window_height = 550
     outputs.labels << control_map.map.with_index do |(keys, action), i|
-      y = 500 - 50 * i
+      y = 520 - 50 * i
       mkb, controller = keys
       [
         {
@@ -566,7 +583,8 @@ class InventoryScreenSimulator
     defaults if inputs.keyboard.key_down.r
     save if inputs.keyboard.key_down.s
     delete_save if inputs.keyboard.key_down.d
-    toggle_debug_grid if inputs.keyboard.key_down.g
+    toggle_grid if inputs.keyboard.key_down.g
+    toggle_debug if inputs.keyboard.key_down.f
     toggle_show_controls if inputs.keyboard.key_down.c
 
     if state.currently_dragging_item_id
