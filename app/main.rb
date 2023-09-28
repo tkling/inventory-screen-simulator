@@ -45,29 +45,31 @@ class InventoryScreenSimulator
 
     state.padding = 16
     inv_grid_columns = 10
+    inv_grid_rows = inv_grid_columns / 2
     state.inv_grid_item_scale = 1.5
-    state.r_panel_width = inv_grid_columns * 32 * state.inv_grid_item_scale
+    state.r_panel_width = inv_grid_columns * 32 * state.inv_grid_item_scale + (inv_grid_columns - 1) * 5
     state.panel_label_h = 15
     state.all_grid_cells = []
 
+    state.inventory_cell_map = {}
     state.inventory_grid = {
       padding: state.padding,
       cells_x: inv_grid_columns,
-      cells_y: inv_grid_columns / 2,
+      cells_y: inv_grid_rows,
       x: state.r_panel_width + state.padding,
       y: state.padding,
       w: state.r_panel_width,
-      h: state.r_panel_width / 2
+      h: inv_grid_rows * 48 + (inv_grid_rows - 1) * 5
     }
 
     hotbar_slots = 5
     state.hotbar = {
       slots: hotbar_slots,
-      x: 1280 - state.r_panel_width - state.padding * 2 - 48 * hotbar_slots
+      x: 1280 - state.r_panel_width - state.padding * 3 - 48 * hotbar_slots
     }
 
     state.stats_panel = {
-      h: 720 - (state.inventory_grid[:h] + state.padding * 4)
+      h: 720 - state.inventory_grid.h - state.padding * 4
     }
 
     state.character_panel = {
@@ -81,50 +83,55 @@ class InventoryScreenSimulator
       h: state.stats_panel[:h]
     }
 
-    shikashi_sprite = {
-      w: 48, h: 48, tile_w: 32, tile_h: 32,
-      path: "sprites/shikashi/transparent_drop_shadow.png"
-    }
+    statics
 
-    load_items or (state.items = {
-      0 => {
-        id: 0,
-        name: "potion",
-        desc: "Heals you lol.",
-        consumable: true,
-        grid_loc: [1, 0],
-        grid: :inventory,
-        **shikashi_sprite,
-        tile_x: 12 * 32,
-        tile_y: 9 * 32,
-        effect: {hp_current: 9}
-      },
-      1 => {
-        id: 1,
-        name: "short sword",
-        desc: "A sword, but not very big.",
-        gear_type: :weapon,
-        consumable: false,
-        grid_loc: [0, 4],
-        grid: :inventory,
-        **shikashi_sprite,
-        tile_x: 2 * 32,
-        tile_y: 5 * 32,
-        effect: {str: 2}
-      },
-      2 => {
-        id: 2,
-        name: "strawberry",
-        desc: "A tasty treat that restores a bit of health.",
-        consumable: true,
-        grid_loc: [0, 0],
-        grid: :hotbar,
-        **shikashi_sprite,
-        tile_x: 4 * 32,
-        tile_y: 14 * 32,
-        effect: {hp_current: 4}
-      }
-    })
+    load_items or (
+      state.items =
+        begin
+          icells = state.all_grid_cells.select { |c| c.grid == :inventory }
+          cell_1 = icells.sample
+          cell_2 = (icells - [cell_1]).sample
+          cell_3 = (icells - [cell_1, cell_2]).sample
+          shikashi_sprite = {
+            w: 48, h: 48, tile_w: 32, tile_h: 32,
+            path: "sprites/shikashi/transparent_drop_shadow.png"
+          }
+          {0 => {
+             id: 0,
+             name: "potion",
+             desc: "Heals you lol.",
+             consumable: true,
+             grid_cell: cell_1,
+             **shikashi_sprite,
+             tile_x: 12 * 32,
+             tile_y: 9 * 32,
+             effect: {hp_current: 9}
+           },
+           1 => {
+             id: 1,
+             name: "short sword",
+             desc: "A sword, but not very big.",
+             gear_type: :weapon,
+             consumable: false,
+             grid_cell: cell_2,
+             **shikashi_sprite,
+             tile_x: 2 * 32,
+             tile_y: 5 * 32,
+             effect: {str: 2}
+           },
+           2 => {
+             id: 2,
+             name: "strawberry",
+             desc: "A tasty treat that restores a bit of health.",
+             consumable: true,
+             grid_cell: cell_3,
+             **shikashi_sprite,
+             tile_x: 4 * 32,
+             tile_y: 14 * 32,
+             effect: {hp_current: 4}
+           }}
+        end
+    )
 
     state.character = {
       name: "Charmander Smith",
@@ -157,8 +164,6 @@ class InventoryScreenSimulator
         con: 0
       }
     }
-
-    statics
   end
 
   def inventory_panel_left_side_x
@@ -169,13 +174,14 @@ class InventoryScreenSimulator
     outputs.static_borders.clear
     inv_grid = state.inventory_grid
     inv_row_count, inv_column_count = inv_grid.values_at(:cells_y, :cells_x)
-    row_height = inv_grid[:h] / inv_row_count
+    row_height = 48
+    cell_padding = 5
 
     inventory_cells = 0.upto(inv_row_count - 1).map do |ri|
-      y = state.padding + row_height * ri
+      y = state.padding + (row_height + cell_padding) * ri
       0.upto(inv_column_count - 1).map do |ci|
         {
-          x: inventory_panel_left_side_x + row_height * ci,
+          x: inventory_panel_left_side_x + (row_height + cell_padding) * ci,
           y: y,
           w: row_height,
           h: row_height,
@@ -188,7 +194,7 @@ class InventoryScreenSimulator
 
     hotbar_cells = 0.upto(state.hotbar.slots - 1).map do |i|
       {
-        x: state.hotbar.x + 48 * i,
+        x: state.hotbar.x + (48 + cell_padding) * i,
         y: state.padding,
         w: 48,
         h: 48,
@@ -414,17 +420,13 @@ class InventoryScreenSimulator
       alignment_enum: 1
     }
 
-    items = state.items.values.select { |item| item[:grid] == :inventory }
+    items = state.items.values.select { |item| item.grid_cell.grid == :inventory }
     outputs.sprites << items.map do |item|
       if item.id == state.currently_dragging_item_id
         item
       else
-        xi, yi = item[:grid_loc]
-        offset_scale = 32 * state.inv_grid_item_scale
-        item.merge!(
-          x: inventory_panel_left_side_x + xi * offset_scale,
-          y: inv_grid[:y] + yi * offset_scale
-        )
+        cell = item.grid_cell
+        item.merge!(x: cell.x, y: cell.y)
       end
     end
   end
@@ -437,16 +439,14 @@ class InventoryScreenSimulator
       alignment_enum: 1
     }
 
-    items = state.items.values.select { |item| item[:grid] == :equip }
+    items = state.items.values.select { |item| item.grid_cell.grid == :equip }
     outputs.sprites << items.map do |item|
       if item.id == state.currently_dragging_item_id
         item
       else
-        slot = item[:grid_loc]
-        equip_grid_cell = state.equip_cells.find { |cell| cell[:grid_loc] == slot }
         item.merge!(
-          x: equip_grid_cell.x,
-          y: equip_grid_cell.y
+          x: item.grid_cell.x,
+          y: item.grid_cell.y
         )
       end
     end
@@ -511,24 +511,19 @@ class InventoryScreenSimulator
   end
 
   def render_hotbar
-    slots = 5
-    hotbar_x = 1280 - state.r_panel_width - state.padding * 2 - 48 * slots
-
     outputs.labels << {
       x: state.padding,
       y: state.padding * 3,
       text: "~ hotbar ~"
     }
 
-    items = state.items.values.select { |i| i[:grid] == :hotbar }
+    items = state.items.values.select { |i| i.grid_cell.grid == :hotbar }
     outputs.sprites << items.map do |item|
-      xd, _yd = item[:grid_loc]
-      offset_scale = 32 * state.inv_grid_item_scale
       item.tap do |i|
         unless item.id == state.currently_dragging_item_id
           item.merge!(
-            x: hotbar_x + xd * offset_scale,
-            y: state.padding
+            x: item.grid_cell.x,
+            y: item.grid_cell.y
           )
         end
       end
@@ -540,7 +535,7 @@ class InventoryScreenSimulator
   end
 
   def fader(text, started_at)
-    return unless started_at
+    return unless started_at&.respond_to?(:-)
 
     ticks_until_fully_faded = 100
     ticks_since_started = state.tick_count - started_at
@@ -610,12 +605,14 @@ class InventoryScreenSimulator
     end
 
     if inputs.mouse.click
-      if item_under_mouse ||= geometry.find_intersect_rect(inputs.mouse, state.items.values)
-        state.currently_dragging_item_id = item_under_mouse.id
-        state.mouse_point_inside_item = {
-          x: inputs.mouse.x - item_under_mouse.x,
-          y: inputs.mouse.y - item_under_mouse.y
-        }
+      if (cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.items.values.map { |i| i.grid_cell }))
+        if item_under_mouse ||= state.items.values.find { |i| i.grid_cell == cell_under_mouse }
+          state.currently_dragging_item_id = item_under_mouse.id
+          state.mouse_point_inside_item = {
+            x: inputs.mouse.x - item_under_mouse.x,
+            y: inputs.mouse.y - item_under_mouse.y
+          }
+        end
       end
     elsif inputs.mouse.held && state.currently_dragging_item_id
       item.x = inputs.mouse.x - state.mouse_point_inside_item.x
@@ -650,7 +647,7 @@ class InventoryScreenSimulator
   def calc
     # TODO: this could get cleaned up a fair bit
     state.character.gear_stats = {}
-    state.items&.values&.select { |i| i.grid == :equip }&.each do |i|
+    state.items&.values&.select { |i| i.grid_cell.grid == :equip }&.each do |i|
       state.character.gear_stats[i.effect.keys.first] = i.effect.values.first
     end
   end
