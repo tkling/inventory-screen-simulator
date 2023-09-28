@@ -26,6 +26,9 @@ class InventoryScreenSimulator
         tile_h: warrior_h
       }
     end
+
+    @cursor_empty = "sprites/complete_gui_essential_v2.2/Icon_Cursor_08a.png"
+    @cursor_drag = "sprites/complete_gui_essential_v2.2/Icon_Cursor_08c.png"
   end
 
   def tick
@@ -35,7 +38,7 @@ class InventoryScreenSimulator
   end
 
   def defaults
-    gtk.hide_cursor
+    set_cursor(@cursor_empty)
     state.welcomed_at = state.tick_count
     state.idle_at = state.tick_count
     state.currently_dragging_item_id = nil
@@ -305,7 +308,6 @@ class InventoryScreenSimulator
     render_deleted_banner
     render_grid_cell_coords
     render_controls
-    render_cursor
   end
 
   def toggle_debug
@@ -319,17 +321,6 @@ class InventoryScreenSimulator
 
   def toggle_show_controls
     state.show_controls = !state.show_controls
-  end
-
-  def render_cursor
-    cursor_variant = state.currently_dragging_item_id ? :c : :a
-
-    outputs.sprites << {
-      x: inputs.mouse.x,
-      y: inputs.mouse.y - 48,
-      w: 48, h: 48,
-      path: "sprites/complete_gui_essential_v2.2/Icon_Cursor_08#{cursor_variant}.png"
-    }
   end
 
   def render_debug_info
@@ -586,6 +577,10 @@ class InventoryScreenSimulator
     fader "SAVE DELETED!", state.save_deleted_at
   end
 
+  def set_cursor(cursor)
+    gtk.set_cursor cursor, 0, 16
+  end
+
   def handle_input
     gtk.request_quit if inputs.keyboard.key_down.escape
 
@@ -607,6 +602,7 @@ class InventoryScreenSimulator
     if inputs.mouse.click
       if (cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.items.values.map { |i| i.grid_cell }))
         if item_under_mouse ||= state.items.values.find { |i| i.grid_cell == cell_under_mouse }
+          set_cursor(@cursor_drag)
           state.currently_dragging_item_id = item_under_mouse.id
           state.mouse_point_inside_item = {
             x: inputs.mouse.x - item_under_mouse.x,
@@ -618,6 +614,7 @@ class InventoryScreenSimulator
       item.x = inputs.mouse.x - state.mouse_point_inside_item.x
       item.y = inputs.mouse.y - state.mouse_point_inside_item.y
     elsif inputs.mouse.up
+      set_cursor(@cursor_empty)
       state.currently_dragging_item_id = nil
       if (grid_cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.all_grid_cells))
         if item && ((grid_cell_under_mouse.grid != :hotbar) || item.consumable)
