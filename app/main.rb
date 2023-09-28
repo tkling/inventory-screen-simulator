@@ -10,7 +10,7 @@ class InventoryScreenSimulator
   #   * ✅ render character
   #   * ✅ save state
   #   * ✅ equip on character
-  #   * prevent "wrong" equips (like sword on foot)
+  #   * ✅ prevent "wrong" equips (like sword on foot)
   #   |=> change gear appearance
   #   |=> ✅ change stats
   #   |=> set bonuses?
@@ -620,9 +620,10 @@ class InventoryScreenSimulator
     elsif inputs.mouse.up
       state.currently_dragging_item_id = nil
       if (grid_cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.all_grid_cells))
-        if grid_cell_under_mouse.grid != :hotbar || item.consumable
-          item.grid_loc = grid_cell_under_mouse.grid_loc
-          item.grid = grid_cell_under_mouse.grid
+        if item && ((grid_cell_under_mouse.grid != :hotbar) || item.consumable)
+          if grid_cell_under_mouse.gear_type.nil? || item.gear_type == grid_cell_under_mouse.gear_type
+            item.grid_cell = grid_cell_under_mouse
+          end
         end
       end
     end
