@@ -42,8 +42,10 @@ class InventoryScreenSimulator
     state.welcomed_at = state.tick_count
     state.idle_at = state.tick_count
     state.currently_dragging_item_id = nil
-    state.show_debug_info = true
+    state.show_debug_info = false
+    state.show_grid = true
     state.show_controls = false
+    state.show_pressed_keys = false
     state.input_mode = :mkb
 
     state.padding = 16
@@ -308,6 +310,7 @@ class InventoryScreenSimulator
     render_deleted_banner
     render_grid_cell_coords
     render_controls
+    render_pressed_keys
   end
 
   def toggle_debug
@@ -321,6 +324,10 @@ class InventoryScreenSimulator
 
   def toggle_show_controls
     state.show_controls = !state.show_controls
+  end
+
+  def toggle_show_pressed_keys
+    state.show_pressed_keys = !state.show_pressed_keys
   end
 
   def render_debug_info
@@ -343,6 +350,16 @@ class InventoryScreenSimulator
       style = x8_style if y % (size * 8) == 0
       {x: 0, x2: 1280, y: y, y2: y, **style}
     end
+  end
+
+  def popup_window_bg(x_center, width, height)
+    outputs.sprites << {
+      x: x_center - 200,
+      y: 360 - height / 2 - 20,
+      w: width,
+      h: height,
+      path: "sprites/gosu/hud/window.png"
+    }
   end
 
   def render_controls
@@ -392,13 +409,9 @@ class InventoryScreenSimulator
       ]
     end
 
-    outputs.sprites << {
-      x: controls_window_x_center - 200,
-      y: 360 - controls_window_height / 2 - 20,
-      w: controls_window_width,
-      h: controls_window_height,
-      path: "sprites/gosu/hud/window.png"
-    }
+    outputs.sprites << popup_window_bg(
+      controls_window_x_center, controls_window_width, controls_window_height
+    )
   end
 
   def render_inventory_panel
@@ -577,6 +590,29 @@ class InventoryScreenSimulator
     fader "SAVE DELETED!", state.save_deleted_at
   end
 
+  def render_pressed_keys
+    return unless state.show_pressed_keys
+
+    outputs.labels << [
+      {
+        x: 440,
+        y: 400,
+        text: "controller keys: #{inputs.controller_one.truthy_keys}",
+        alignment_enum: 0,
+        size_enum: 3
+      },
+      {
+        x: 440,
+        y: 280,
+        text: "kb keys: #{inputs.keyboard.keys[:down_or_held]}",
+        alignment_enum: 0,
+        size_enum: 3
+      }
+    ]
+
+    outputs.sprites << popup_window_bg(580, 500, 300)
+  end
+
   def set_cursor(cursor)
     gtk.set_cursor cursor, 0, 16
   end
@@ -590,36 +626,39 @@ class InventoryScreenSimulator
     toggle_grid if inputs.keyboard.key_down.g
     toggle_debug if inputs.keyboard.key_down.f
     toggle_show_controls if inputs.keyboard.key_down.c
+    toggle_show_pressed_keys if inputs.keyboard.key_down.k
 
-    if state.currently_dragging_item_id
-      item = state.items[state.currently_dragging_item_id]
-      item_under_mouse = item
-    else
-      item = nil
-      item_under_mouse = nil
-    end
-
-    if inputs.mouse.click
-      if (cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.items.values.map { |i| i.grid_cell }))
-        if item_under_mouse ||= state.items.values.find { |i| i.grid_cell == cell_under_mouse }
-          set_cursor(@cursor_drag)
-          state.currently_dragging_item_id = item_under_mouse.id
-          state.mouse_point_inside_item = {
-            x: inputs.mouse.x - item_under_mouse.x,
-            y: inputs.mouse.y - item_under_mouse.y
-          }
-        end
+    if state.input_mode == :mkb
+      if state.currently_dragging_item_id
+        item = state.items[state.currently_dragging_item_id]
+        item_under_mouse = item
+      else
+        item = nil
+        item_under_mouse = nil
       end
-    elsif inputs.mouse.held && state.currently_dragging_item_id
-      item.x = inputs.mouse.x - state.mouse_point_inside_item.x
-      item.y = inputs.mouse.y - state.mouse_point_inside_item.y
-    elsif inputs.mouse.up
-      set_cursor(@cursor_empty)
-      state.currently_dragging_item_id = nil
-      if (grid_cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.all_grid_cells))
-        if item && ((grid_cell_under_mouse.grid != :hotbar) || item.consumable)
-          if grid_cell_under_mouse.gear_type.nil? || item.gear_type == grid_cell_under_mouse.gear_type
-            item.grid_cell = grid_cell_under_mouse
+
+      if inputs.mouse.click
+        if (cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.items.values.map { |i| i.grid_cell }))
+          if item_under_mouse ||= state.items.values.find { |i| i.grid_cell == cell_under_mouse }
+            set_cursor(@cursor_drag)
+            state.currently_dragging_item_id = item_under_mouse.id
+            state.mouse_point_inside_item = {
+              x: inputs.mouse.x - item_under_mouse.x,
+              y: inputs.mouse.y - item_under_mouse.y
+            }
+          end
+        end
+      elsif inputs.mouse.held && state.currently_dragging_item_id
+        item.x = inputs.mouse.x - state.mouse_point_inside_item.x
+        item.y = inputs.mouse.y - state.mouse_point_inside_item.y
+      elsif inputs.mouse.up
+        set_cursor(@cursor_empty)
+        state.currently_dragging_item_id = nil
+        if (grid_cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.all_grid_cells))
+          if item && ((grid_cell_under_mouse.grid != :hotbar) || item.consumable)
+            if grid_cell_under_mouse.gear_type.nil? || item.gear_type == grid_cell_under_mouse.gear_type
+              item.grid_cell = grid_cell_under_mouse
+            end
           end
         end
       end
