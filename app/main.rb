@@ -393,7 +393,6 @@ class InventoryScreenSimulator
     controls_window_x_center = 540
     controls_window_width = 600
     controls_window_height = 550
-    #     save: {mkb: :s, controller: :a, desc: "save"},
     outputs.labels << CONTROL_MAP.map.with_index do |(action, mapping), i|
       y = 520 - 50 * i
       mkb, controller = mapping.values_at(:mkb, :controller)
