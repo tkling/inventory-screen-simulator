@@ -3,6 +3,30 @@
 class InventoryScreenSimulator
   attr_gtk
 
+  CONTROL_MAP = {
+    save: {mkb: :s, controller: :a, desc: "save"},
+    delete_save: {mkb: :d, controller: :y, desc: "delete save"},
+    reset: {mkb: :r, controller: :b, desc: "reset"},
+    hide_bg: {mkb: :b, controller: :r1, desc: "show/hide background"},
+    hide_grid: {mkb: :g, controller: :r2, desc: "show/hide grid"},
+    hide_debug: {mkb: :f, controller: :l1, desc: "show/hide debug"},
+    hide_controls: {mkb: :c, controller: :l2, desc: "show/hide controls"},
+    hide_pressed_keys: {mkb: :k, controller: :x, desc: "show/hide pressed keys"},
+    quit: {mkb: :escape, controller: :select, desc: "quit"}
+  }
+
+  def key_pressed_for_action?(action)
+    action_key = CONTROL_MAP[action][state.input_mode]
+    pressed_keys =
+      case state.input_mode
+      when :mkb then inputs.keyboard.keys[:down]
+      when :controller then inputs.controller_one.truthy_keys
+      else raise "unrecognized input mode! #{state.input_mode}"
+      end
+
+    pressed_keys.include? action_key
+  end
+
   # Goals:
   #   * ✅ arrange items in inventory grid
   #   * ✅ set consumables on hotbar
@@ -366,24 +390,13 @@ class InventoryScreenSimulator
     return unless state.show_controls
     return unless state.input_mode == :mkb
 
-    # TODO: this should be set as a const/state var
-    control_map = {
-      [:s, :A] => "save",
-      [:d, :Y] => "delete save",
-      [:r, :B] => "reset",
-      [:b, :R1] => "show/hide background",
-      [:g, :R2] => "show/hide grid",
-      [:f, :L1] => "show/hide debug",
-      [:c, :L2] => "show/hide controls",
-      [:esc, :SEL] => "quit"
-    }
-
     controls_window_x_center = 540
     controls_window_width = 600
     controls_window_height = 550
-    outputs.labels << control_map.map.with_index do |(keys, action), i|
+    #     save: {mkb: :s, controller: :a, desc: "save"},
+    outputs.labels << CONTROL_MAP.map.with_index do |(action, mapping), i|
       y = 520 - 50 * i
-      mkb, controller = keys
+      mkb, controller = mapping.values_at(:mkb, :controller)
       [
         {
           x: controls_window_x_center - 70,
@@ -402,7 +415,7 @@ class InventoryScreenSimulator
         {
           x: controls_window_x_center + state.padding * 2,
           y: y,
-          text: action,
+          text: mapping[:desc],
           alignment_enum: 0,
           size_enum: 6
         }
@@ -617,16 +630,31 @@ class InventoryScreenSimulator
     gtk.set_cursor cursor, 0, 16
   end
 
-  def handle_input
-    gtk.request_quit if inputs.keyboard.key_down.escape
+  def switch_input_mode
+    other_input_mode_keys =
+      if state.input_mode == :mkb
+        inputs.controller_one.truthy_keys
+      elsif state.input_mode == :controller
+        inputs.keyboard.keys[:down]
+      end
+    return if other_input_mode_keys.empty?
 
-    defaults if inputs.keyboard.key_down.r
-    save if inputs.keyboard.key_down.s
-    delete_save if inputs.keyboard.key_down.d
-    toggle_grid if inputs.keyboard.key_down.g
-    toggle_debug if inputs.keyboard.key_down.f
-    toggle_show_controls if inputs.keyboard.key_down.c
-    toggle_show_pressed_keys if inputs.keyboard.key_down.k
+    next_input_mode = ([:mkb, :controller] - [state.input_mode]).first
+    puts "switching input mode from #{state.input_mode} to #{next_input_mode}"
+    state.input_mode = next_input_mode
+  end
+
+  def handle_input
+    switch_input_mode
+    gtk.request_quit if key_pressed_for_action? :quit
+
+    defaults if key_pressed_for_action? :reset
+    save if key_pressed_for_action? :save
+    delete_save if key_pressed_for_action? :delete_save
+    toggle_grid if key_pressed_for_action? :hide_grid
+    toggle_debug if key_pressed_for_action? :hide_debug
+    toggle_show_controls if key_pressed_for_action? :hide_controls
+    toggle_show_pressed_keys if key_pressed_for_action? :hide_pressed_keys
 
     if state.input_mode == :mkb
       if state.currently_dragging_item_id
