@@ -240,55 +240,55 @@ class InventoryScreenSimulator
     equip_cell_template = {w: sprite_size, h: sprite_size, grid: :equip}
     equip_cells = [
       {
-        grid_loc: :head, gear_type: :head,
+        grid_loc: [0, 4], gear_type: :head,
         x: equip_panel_sprite_center,
         y: head_y,
         **equip_cell_template
       },
       {
-        grid_loc: :main_hand, gear_type: :weapon,
+        grid_loc: [0, 3], gear_type: :weapon,
         x: equip_panel.x + equip_panel.w / 4 - sprite_size.fdiv(2),
         y: head_y - sprite_size - state.padding,
         **equip_cell_template
       },
       {
-        grid_loc: :off_hand, gear_type: :weapon,
+        grid_loc: [2, 3], gear_type: :weapon,
         x: equip_panel.x + equip_panel.w / 4 * 3 - sprite_size.fdiv(2),
         y: head_y - sprite_size - state.padding,
         **equip_cell_template
       },
       {
-        grid_loc: :chest, gear_type: :chest,
+        grid_loc: [1, 3], gear_type: :chest,
         x: equip_panel_sprite_center,
         y: head_y - sprite_size - state.padding,
         **equip_cell_template
       },
       {
-        grid_loc: :legs, gear_type: :legs,
+        grid_loc: [0, 2], gear_type: :legs,
         x: equip_panel_sprite_center,
         y: head_y - sprite_size * 2 - state.padding * 2,
         **equip_cell_template
       },
       {
-        grid_loc: :feet, gear_type: :feet,
+        grid_loc: [0, 1], gear_type: :feet,
         x: equip_panel.x + equip_panel.w / 2 - sprite_size / 2,
         y: head_y - sprite_size * 3 - state.padding * 3,
         **equip_cell_template
       },
       {
-        grid_loc: :necklace, gear_type: :necklace,
+        grid_loc: [1, 0], gear_type: :necklace,
         x: equip_panel_sprite_center,
         y: equip_panel.y + state.padding,
         **equip_cell_template
       },
       {
-        grid_loc: :ring_1, gear_type: :ring,
+        grid_loc: [0, 0], gear_type: :ring,
         x: equip_panel_sprite_center - equip_panel.w.fdiv(3),
         y: equip_panel.y + state.padding,
         **equip_cell_template
       },
       {
-        grid_loc: :ring_2, gear_type: :ring,
+        grid_loc: [2, 0], gear_type: :ring,
         x: equip_panel_sprite_center + equip_panel.w.fdiv(3),
         y: equip_panel.y + state.padding,
         **equip_cell_template
@@ -323,12 +323,13 @@ class InventoryScreenSimulator
 
   def render
     render_debug_info
-    render_inventory_panel
-    render_equip_panel
     render_stats_panel
-    render_character
-    render_character_panel
+    render_equip_panel
     render_hotbar
+    render_inventory_panel
+    render_selected_cell
+    render_character_panel
+
     render_welcome
     render_saved_banner
     render_deleted_banner
@@ -393,7 +394,7 @@ class InventoryScreenSimulator
     controls_window_x_center = 540
     controls_window_width = 600
     controls_window_height = 550
-    outputs.labels << CONTROL_MAP.map.with_index do |(action, mapping), i|
+    outputs.labels << CONTROL_MAP.map.with_index do |(_action, mapping), i|
       y = 520 - 50 * i
       mkb, controller = mapping.values_at(:mkb, :controller)
       [
@@ -468,6 +469,14 @@ class InventoryScreenSimulator
     end
   end
 
+  def render_selected_cell
+    return unless state.currently_selected_cell
+
+    unless inputs.mouse.held
+      outputs.solids << state.currently_selected_cell.merge(r: 200, a: 220)
+    end
+  end
+
   def render_stats_panel
     outputs.labels << {
       x: (state.r_panel_width / 4 + state.padding / 2).from_right,
@@ -504,7 +513,15 @@ class InventoryScreenSimulator
     end.flatten
   end
 
-  def render_character
+  def render_character_panel
+    outputs.labels << {
+      x: (state.padding + state.character_panel.w) / 2,
+      y: (state.padding + state.panel_label_h).from_top,
+      text: "~ #{state.character[:name]} ~",
+      alignment_enum: 1
+    }
+
+    # character sprite
     idle_frame = @idle_anim[state.idle_at.frame_index(6, 9, true).or(0)]
     scale = 12.0
     dims = {
@@ -515,15 +532,6 @@ class InventoryScreenSimulator
     }
     outputs.borders << dims.merge(r: 200, b: 200) if state.show_debug_info
     outputs.sprites << dims.merge(idle_frame)
-  end
-
-  def render_character_panel
-    outputs.labels << {
-      x: (state.padding + state.character_panel.w) / 2,
-      y: (state.padding + state.panel_label_h).from_top,
-      text: "~ #{state.character[:name]} ~",
-      alignment_enum: 1
-    }
   end
 
   def render_hotbar
@@ -640,6 +648,12 @@ class InventoryScreenSimulator
 
     next_input_mode = ([:mkb, :controller] - [state.input_mode]).first
     puts "switching input mode from #{state.input_mode} to #{next_input_mode}"
+    if next_input_mode == :controller
+      # make current grid navigation location the cell under mouse if available
+      if (cell_under_mouse = geometry.intersects_rect?(inputs.mouse, state.all_grid_cells))
+        state.current_grid_nav_cell = cell_under_mouse
+      end
+    end
     state.input_mode = next_input_mode
   end
 
@@ -655,38 +669,71 @@ class InventoryScreenSimulator
     toggle_show_controls if key_pressed_for_action? :hide_controls
     toggle_show_pressed_keys if key_pressed_for_action? :hide_pressed_keys
 
-    if state.input_mode == :mkb
-      if state.currently_dragging_item_id
-        item = state.items[state.currently_dragging_item_id]
-        item_under_mouse = item
-      else
-        item = nil
-        item_under_mouse = nil
-      end
+    if state.currently_dragging_item_id
+      item = state.items[state.currently_dragging_item_id]
+      item_under_mouse = item
+    else
+      item = nil
+      item_under_mouse = nil
+    end
 
-      if inputs.mouse.click
-        if (cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.items.values.map { |i| i.grid_cell }))
-          if item_under_mouse ||= state.items.values.find { |i| i.grid_cell == cell_under_mouse }
-            set_cursor(@cursor_drag)
-            state.currently_dragging_item_id = item_under_mouse.id
-            state.mouse_point_inside_item = {
-              x: inputs.mouse.x - item_under_mouse.x,
-              y: inputs.mouse.y - item_under_mouse.y
-            }
+    if inputs.mouse.click
+      if (cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.items.values.map { |i| i.grid_cell }))
+        if item_under_mouse ||= state.items.values.find { |i| i.grid_cell == cell_under_mouse }
+          set_cursor(@cursor_drag)
+          state.currently_dragging_item_id = item_under_mouse.id
+          state.mouse_point_inside_item = {
+            x: inputs.mouse.x - item_under_mouse.x,
+            y: inputs.mouse.y - item_under_mouse.y
+          }
+        end
+      end
+    elsif inputs.mouse.held && state.currently_dragging_item_id
+      item.x = inputs.mouse.x - state.mouse_point_inside_item.x
+      item.y = inputs.mouse.y - state.mouse_point_inside_item.y
+    elsif inputs.mouse.up
+      set_cursor(@cursor_empty)
+      state.currently_dragging_item_id = nil
+      if (grid_cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.all_grid_cells))
+        if item && ((grid_cell_under_mouse.grid != :hotbar) || item.consumable)
+          if grid_cell_under_mouse.gear_type.nil? || item.gear_type == grid_cell_under_mouse.gear_type
+            item.grid_cell = grid_cell_under_mouse
           end
         end
-      elsif inputs.mouse.held && state.currently_dragging_item_id
-        item.x = inputs.mouse.x - state.mouse_point_inside_item.x
-        item.y = inputs.mouse.y - state.mouse_point_inside_item.y
-      elsif inputs.mouse.up
-        set_cursor(@cursor_empty)
-        state.currently_dragging_item_id = nil
-        if (grid_cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.all_grid_cells))
-          if item && ((grid_cell_under_mouse.grid != :hotbar) || item.consumable)
-            if grid_cell_under_mouse.gear_type.nil? || item.gear_type == grid_cell_under_mouse.gear_type
-              item.grid_cell = grid_cell_under_mouse
-            end
-          end
+      end
+    end
+
+    unless state.currently_dragging_item_id
+      current_cell = state.currently_selected_cell ||= state.all_grid_cells.find do |c|
+        c[:grid] == :inventory
+      end
+
+      x_mod, y_mod = 0, 0
+      con, kb = inputs.controller_one, inputs.keyboard
+      x_mod += 1 if con.key_down.right || kb.keys[:down].include?(:right)
+      x_mod -= 1 if con.key_down.left || kb.keys[:down].include?(:left)
+      y_mod += 1 if con.key_down.up || kb.keys[:down].include?(:up)
+      y_mod -= 1 if con.key_down.down || kb.keys[:down].include?(:down)
+      next_col = current_cell.grid_loc[0] + x_mod
+      next_row = current_cell.grid_loc[1] + y_mod
+
+      # All of this logic is gnarly AF, the grid layout should know which cells are on
+      # borders and which cells they connect to and this would be a lot simpler to look at.
+      state.currently_selected_cell = state.all_grid_cells.find do |cell|
+        if current_cell.grid == :inventory && next_col < 0
+          cell == state.all_grid_cells.find { |c| c.grid == :hotbar && c.grid_loc == [4, 0] }
+        elsif current_cell.grid == :inventory && next_row > 4
+          cell == state.all_grid_cells.find { |c| c.grid == :equip && c.grid_loc == [1, 0] }
+        elsif current_cell.grid == :equip && next_row < 0
+          cell == state.all_grid_cells.find { |c| c.grid == :inventory && c.grid_loc == [2, 4] }
+        elsif current_cell.grid == :equip && current_cell.grid_loc[1] == 0 && next_row > 0
+          cell == state.all_grid_cells.find { |c| c.grid == :equip && c.grid_loc == [0, next_row] }
+        elsif current_cell.grid == :equip && current_cell.grid_loc[1] == 1 && next_row < 1
+          cell == state.all_grid_cells.find { |c| c.grid == :equip && c.grid_loc == [1, next_row] }
+        elsif current_cell.grid == :hotbar && next_col > 4
+          cell == state.all_grid_cells.find { |c| c.grid == :inventory }
+        else
+          cell.grid == current_cell.grid && cell.grid_loc == [next_col, next_row]
         end
       end
     end
