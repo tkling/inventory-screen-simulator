@@ -28,7 +28,7 @@ class InventoryScreenSimulator
   # Goals:
   #   * ✅ arrange items in inventory grid
   #   * ✅ set consumables on hotbar
-  #   * supported inputs: mouse, kb, controller
+  #   * ✅ supported inputs: mouse, kb, controller
   #   * ✅ render character
   #   * ✅ save state
   #   * ✅ equip on character
