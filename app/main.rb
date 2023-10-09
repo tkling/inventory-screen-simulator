@@ -3,23 +3,62 @@
 class InventoryScreenSimulator
   attr_gtk
 
-  CONTROL_MAP = {
-    use: {mkb: :space, controller: :a, desc: "use"},
-    save: {mkb: :s, controller: :start, desc: "save"},
-    delete_save: {mkb: :d, controller: :y, desc: "delete save"},
-    reset: {mkb: :r, controller: :b, desc: "reset"},
-    hide_bg: {mkb: :b, controller: :r1, desc: "show/hide background"},
-    hide_grid: {mkb: :g, controller: :r2, desc: "show/hide grid"},
-    hide_debug: {mkb: :f, controller: :l1, desc: "show/hide debug"},
-    hide_controls: {mkb: :c, controller: :l2, desc: "show/hide controls"},
-    hide_pressed_keys: {mkb: :k, controller: :x, desc: "show/hide pressed keys"},
-    quit: {mkb: :escape, controller: :select, desc: "quit"}
-  }
+  class Controls
+    attr_reader :action_map, :sprites
 
-  def key_pressed_for_action?(action)
-    controls = CONTROL_MAP[action]
-    inputs.keyboard.keys[:down].include?(controls[:mkb]) ||
-      inputs.controller_one.key_down.send(controls[:controller])
+    def initialize(inputs)
+      @inputs = inputs
+      @action_map = {
+        use: {mkb: :space, controller: :a, desc: "use"},
+        save: {mkb: :s, controller: :start, desc: "save"},
+        delete_save: {mkb: :d, controller: :y, desc: "delete save"},
+        reset: {mkb: :r, controller: :b, desc: "reset"},
+        hide_bg: {mkb: :b, controller: :r1, desc: "show/hide background"},
+        hide_grid: {mkb: :g, controller: :r2, desc: "show/hide grid"},
+        hide_debug: {mkb: :f, controller: :l1, desc: "show/hide debug"},
+        hide_controls: {mkb: :c, controller: :l2, desc: "show/hide controls"},
+        hide_pressed_keys: {mkb: :k, controller: :x, desc: "show/hide pressed keys"},
+        quit: {mkb: :escape, controller: :select, desc: "quit"}
+      }
+
+      offset = 16
+      gdb_template = {w: offset * 2, h: offset * 2, tile_w: offset, tile_h: offset}
+      mkb_template = gdb_template.merge(path: "sprites/gdb-gamepad-2/gdb-keyboard-2-modified.png")
+      con_template = gdb_template.merge(tile_x: offset * 1, path: "sprites/gdb-gamepad-2/gdb-xbox-2.png")
+
+      @sprites = {
+        mkb: {
+          space: mkb_template.merge(tile_x: offset * 18, tile_y: offset * 1),
+          s: mkb_template.merge(tile_x: offset * 5, tile_y: offset * 4),
+          d: mkb_template.merge(tile_x: offset * 6, tile_y: offset * 4),
+          r: mkb_template.merge(tile_x: offset * 7, tile_y: offset * 3),
+          b: mkb_template.merge(tile_x: offset * 8, tile_y: offset * 5),
+          g: mkb_template.merge(tile_x: offset * 8, tile_y: offset * 4),
+          f: mkb_template.merge(tile_x: offset * 7, tile_y: offset * 4),
+          c: mkb_template.merge(tile_x: offset * 6, tile_y: offset * 5),
+          k: mkb_template.merge(tile_x: offset * 11, tile_y: offset * 4),
+          escape: mkb_template.merge(tile_x: offset * 2, tile_y: offset * 1)
+        },
+        controller: {
+          a: con_template.merge(tile_y: offset * 3),
+          x: con_template.merge(tile_y: offset * 2),
+          y: con_template.merge(tile_y: offset * 4),
+          b: con_template.merge(tile_y: offset * 5),
+          r1: con_template.merge(tile_x: offset * 21, tile_y: offset * 5),
+          r2: con_template.merge(tile_x: offset * 21, tile_y: offset * 4),
+          l1: con_template.merge(tile_x: offset * 21, tile_y: offset * 6),
+          l2: con_template.merge(tile_x: offset * 21, tile_y: offset * 3),
+          start: con_template.merge(tile_y: offset * 7),
+          select: con_template.merge(tile_y: offset * 6)
+        }
+      }
+    end
+
+    def key_pressed_for_action?(action)
+      controls = action_map[action]
+      @inputs.keyboard.keys[:down].include?(controls[:mkb]) ||
+        @inputs.controller_one.key_down.send(controls[:controller])
+    end
   end
 
   # Goals:
@@ -57,6 +96,7 @@ class InventoryScreenSimulator
   end
 
   def defaults
+    @controls = Controls.new(inputs)
     set_cursor(@cursor_empty)
     state.welcomed_at = state.tick_count
     state.idle_at = state.tick_count
@@ -386,37 +426,35 @@ class InventoryScreenSimulator
     controls_window_x_center = 540
     controls_window_width = 600
     controls_window_height = 550
-    outputs.labels << CONTROL_MAP.map.with_index do |(_action, mapping), i|
-      y = 520 - 50 * i
-      mkb, controller = mapping.values_at(:mkb, :controller)
-      [
-        {
-          x: controls_window_x_center - 70,
-          y: y,
-          text: mkb,
-          alignment_enum: 2,
-          size_enum: 6
-        },
-        {
-          x: controls_window_x_center,
-          y: y,
-          text: controller,
-          alignment_enum: 2,
-          size_enum: 6
-        },
-        {
-          x: controls_window_x_center + state.padding * 2,
-          y: y,
-          text: mapping[:desc],
-          alignment_enum: 0,
-          size_enum: 6
-        }
-      ]
-    end
 
     outputs.sprites << popup_window_bg(
       controls_window_x_center, controls_window_width, controls_window_height
     )
+
+    x_labels = controls_window_x_center - 64
+    outputs.primitives << @controls.action_map.map.with_index do |(_action, mapping), i|
+      y = 530 - 40 * i
+      mkb, controller = mapping.values_at(:mkb, :controller)
+      [
+        {
+          x: x_labels - 70,
+          y: y - 32,
+          **@controls.sprites[:mkb][mkb]
+        }.sprite!,
+        {
+          x: x_labels,
+          y: y - 32,
+          **@controls.sprites[:controller][controller]
+        }.sprite!,
+        {
+          x: x_labels + state.padding * 4.5,
+          y: y,
+          text: mapping[:desc],
+          alignment_enum: 0,
+          size_enum: 6
+        }.label!
+      ]
+    end
   end
 
   def render_items
@@ -624,15 +662,15 @@ class InventoryScreenSimulator
 
   def handle_input
     show_cursor
-    gtk.request_quit if key_pressed_for_action? :quit
+    gtk.request_quit if @controls.key_pressed_for_action? :quit
 
-    defaults if key_pressed_for_action? :reset
-    save if key_pressed_for_action? :save
-    delete_save if key_pressed_for_action? :delete_save
-    toggle_grid if key_pressed_for_action? :hide_grid
-    toggle_debug if key_pressed_for_action? :hide_debug
-    toggle_show_controls if key_pressed_for_action? :hide_controls
-    toggle_show_pressed_keys if key_pressed_for_action? :hide_pressed_keys
+    defaults if @controls.key_pressed_for_action? :reset
+    save if @controls.key_pressed_for_action? :save
+    delete_save if @controls.key_pressed_for_action? :delete_save
+    toggle_grid if @controls.key_pressed_for_action? :hide_grid
+    toggle_debug if @controls.key_pressed_for_action? :hide_debug
+    toggle_show_controls if @controls.key_pressed_for_action? :hide_controls
+    toggle_show_pressed_keys if @controls.key_pressed_for_action? :hide_pressed_keys
 
     if state.currently_dragging_item_id
       item = state.items[state.currently_dragging_item_id]
@@ -701,7 +739,7 @@ class InventoryScreenSimulator
         state.all_grid_cells.find { |c| c[:grid] == current_grid } || state.all_grid_cells.first
       end
 
-      set_item_selection if key_pressed_for_action? :use
+      set_item_selection if @controls.key_pressed_for_action? :use
     end
   end
 
