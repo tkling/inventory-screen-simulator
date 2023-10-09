@@ -17,12 +17,9 @@ class InventoryScreenSimulator
   }
 
   def key_pressed_for_action?(action)
-    action_key = CONTROL_MAP[action][state.input_mode]
-    case state.input_mode
-    when :mkb then inputs.keyboard.keys[:down].include?(action_key)
-    when :controller then inputs.controller_one.key_down.send(action_key)
-    else raise "unrecognized input mode! #{state.input_mode}"
-    end
+    controls = CONTROL_MAP[action]
+    inputs.keyboard.keys[:down].include?(controls[:mkb]) ||
+      inputs.controller_one.key_down.send(controls[:controller])
   end
 
   # Goals:
@@ -68,7 +65,6 @@ class InventoryScreenSimulator
     state.show_grid = true
     state.show_controls = false
     state.show_pressed_keys = false
-    state.input_mode = :mkb
 
     state.padding = 16
     inv_grid_columns = 10
@@ -386,7 +382,6 @@ class InventoryScreenSimulator
 
   def render_controls
     return unless state.show_controls
-    return unless state.input_mode == :mkb
 
     controls_window_x_center = 540
     controls_window_width = 600
@@ -615,30 +610,20 @@ class InventoryScreenSimulator
     gtk.set_cursor cursor, 0, 16
   end
 
-  def switch_input_mode
-    other_input_mode_keys =
-      if state.input_mode == :mkb
-        inputs.controller_one.truthy_keys
-      elsif state.input_mode == :controller
-        inputs.keyboard.keys[:down]
-      end
-    return if other_input_mode_keys.empty?
-
-    next_input_mode = ([:mkb, :controller] - [state.input_mode]).first
-    puts "switching input mode from #{state.input_mode} to #{next_input_mode}"
-
-    if next_input_mode == :controller
-      # make current grid navigation location the cell under mouse if available
-      if (cell_under_mouse = geometry.find_intersect_rect(inputs.mouse, state.all_grid_cells))
-        state.current_nav_cell = cell_under_mouse
-      end
+  def show_cursor
+    if !gtk.cursor_shown? && inputs.mouse.moved
+      gtk.show_cursor
     end
 
-    state.input_mode = next_input_mode
+    xd, yd = nav_mod_tuple
+    last_input_was_nav = xd != 0 || yd != 0
+    if last_input_was_nav && gtk.cursor_shown?
+      gtk.hide_cursor
+    end
   end
 
   def handle_input
-    switch_input_mode
+    show_cursor
     gtk.request_quit if key_pressed_for_action? :quit
 
     defaults if key_pressed_for_action? :reset
@@ -685,13 +670,7 @@ class InventoryScreenSimulator
       current_cell = state.current_nav_cell ||=
         state.all_grid_cells.find { |c| c[:grid] == :inventory }
 
-      x_mod, y_mod = 0, 0
-      con, kb = inputs.controller_one, inputs.keyboard
-      x_mod += 1 if con.key_down.right || kb.keys[:down].include?(:right)
-      x_mod -= 1 if con.key_down.left || kb.keys[:down].include?(:left)
-      y_mod += 1 if con.key_down.up || kb.keys[:down].include?(:up)
-      y_mod -= 1 if con.key_down.down || kb.keys[:down].include?(:down)
-
+      x_mod, y_mod = nav_mod_tuple
       gl = current_cell.grid_loc
       next_col = gl && gl[0] + x_mod
       next_row = gl && gl[1] + y_mod
@@ -724,6 +703,16 @@ class InventoryScreenSimulator
 
       set_item_selection if key_pressed_for_action? :use
     end
+  end
+
+  def nav_mod_tuple
+    x_mod, y_mod = 0, 0
+    con, kb = inputs.controller_one, inputs.keyboard
+    x_mod += 1 if con.key_down.right || kb.keys[:down].include?(:right)
+    x_mod -= 1 if con.key_down.left || kb.keys[:down].include?(:left)
+    y_mod += 1 if con.key_down.up || kb.keys[:down].include?(:up)
+    y_mod -= 1 if con.key_down.down || kb.keys[:down].include?(:down)
+    [x_mod, y_mod]
   end
 
   def place_item_in_cell!(item, cell)
