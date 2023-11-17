@@ -721,9 +721,17 @@ class InventoryScreenSimulator
           if current_cell.grid == :inventory && next_col < 0
             cell.grid == :hotbar && cell.grid_loc == [4, 0]
           elsif current_cell.grid == :inventory && next_row > 4
-            cell.grid == :equip && cell.grid_loc == [1, 0]
+            xi = {0 => 0, 2 => 1, 4 => 2}[current_cell.grid_loc[0]] || 1
+            cell.grid == :equip && cell.grid_loc == [xi, 0]
           elsif current_cell.grid == :equip && next_row < 0
-            cell.grid == :inventory && cell.grid_loc == [2, 4]
+            xi = [0, 2, 4][current_cell.grid_loc[0]]
+            cell.grid == :inventory && cell.grid_loc == [xi, 4]
+          elsif current_cell.grid == :equip && [2, 4].include?(current_cell.grid_loc[1]) && next_row == 3
+            cell.grid == :equip && cell.grid_loc == [1, 3]
+          elsif current_cell.grid == :equip && current_cell.grid_loc[1] == 3 && next_row == 4
+            cell.grid == :equip && cell.grid_loc == [0, next_row]
+          elsif current_cell.grid == :equip && current_cell.grid_loc[1] == 3 && next_row == 2
+            cell.grid == :equip && cell.grid_loc == [0, next_row]
           elsif current_cell.grid == :equip && current_cell.grid_loc[1] == 0 && next_row > 0
             cell.grid == :equip && cell.grid_loc == [0, next_row]
           elsif current_cell.grid == :equip && current_cell.grid_loc[1] == 1 && next_row < 1
@@ -772,9 +780,8 @@ class InventoryScreenSimulator
     else
       cell = state.current_nav_cell
 
-      state.currently_selected_item_id = cell && state.items.values.find do |i|
-        i.grid_cell == cell
-      end&.id
+      state.currently_selected_item_id = cell &&
+        state.items.values.find { |i| i.grid_cell == cell }&.id
 
       set_cursor(@cursor_drag)
     end
